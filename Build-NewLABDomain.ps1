@@ -50,6 +50,7 @@ Catch {
 
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+    Write-Output "Creating VM"
     $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ErrorAction Stop
 
     Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
@@ -73,26 +74,36 @@ Catch {
   
 $IPAddress = $VM.Guest.IpAddress[0]
 
-
+Write-Output "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
 $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
+Write-Output "Copying DSC resources to VM"
+# ----- Remove the drive if it exists
+if ( Get-PSDrive -Name RemoteDrive ) { Remove-PSDrive -Name RemoteDrive }
+
 New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin
+
+Write-Output "Copy MOFs"
 Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destination RemoteDrive:\temp\localhost.mof
 COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
 
 
-copy-item -path C:\Scripts\lab\MOF\KW-DC1.mof -Destination RemoteDrive:\temp\localhost.mof
+#copy-item -path C:\Scripts\lab\MOF\KW-DC1.mof -Destination RemoteDrive:\temp\localhost.mof
 #copy-item -path C:\Scripts\lab\MOF\KW-DC1.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
+Write-Output "Copy DSC Resources"
 copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-Item -path C:\users\600990\Documents\WindowsPowerShell\Modules\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+
+# ----- Pausing as running the script too soon fails.
+Start-Sleep -Seconds 30
 
 # ----- Run Config MOF on computer
 $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
 Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
 
-
 # ----- Clean up
-Remove-PSDrive -Name RemoteDrive 
+Remove-PSDrive -Name RemoteDrive
