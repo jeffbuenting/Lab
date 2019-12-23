@@ -17,12 +17,7 @@ configuration New-LABDomain
     Node $AllNodes.Where{$_.Role -eq "Primary DC"}.Nodename             
     { 
 
-        LocalConfigurationManager 
-        {
-            ActionAfterReboot = 'ContinueConfiguration'            
-            ConfigurationMode = 'ApplyOnly'            
-            RebootNodeIfNeeded = $true  
-        }
+
 
         xComputer SetName { 
             Name = $Node.NodeName 
