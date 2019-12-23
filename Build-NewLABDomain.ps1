@@ -16,16 +16,20 @@
         https://pleasework.robbievance.net/howto-desired-state-configuration-dsc-overview/
 #>
 
-Try {
-    Connect-VIServer -Server 192.168.1.16 -Credential (Get-Credential -Message "vCenter Account" ) -ErrorAction Stop
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABDomain : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
+[CmdletBinding()]
+Param (
+    [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
 
-$LocalAdmin = Get-Credential -UserName administrator -Message "Servers Local Admin Account"
+    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+
+    [PSCredential]$ADRecoveryAcct = (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"),
+
+    [PSCredential]$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential")
+)
+
+
+# ----- Dot source configs and DSC scripts
+Write-Output "Dot sourcing scripts"
 
 # ----- Load the Config Data
 . $PSScriptRoot\DSCConfigs\Config_New-LABDomain.PS1
@@ -33,11 +37,17 @@ $LocalAdmin = Get-Credential -UserName administrator -Message "Servers Local Adm
 # ----- Dot source New-LABDomain
 . $PSScriptRoot\DSCConfigs\New-LABDomain.PS1
 
+# ----- Dot source LCM config
+. $PSScriptRoot\DSCConfigs\LCMConfig.ps1
+
+# ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
 try {
+    LCMConfig -OutputPath C:\Scripts\Lab\MOF -ErrorAction Stop
+
     New-LABDomain -ConfigurationData $ConfigData `
-        -safemodeAdministratorCred (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password") `
-        -domainCred (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential") `
+        -safemodeAdministratorCred $ADRecoveryAcct `
+        -domainCred $DomainAdmin `
         -OutputPath $PSScriptRoot\MOF `
         -ErrorAction Stop
 }
@@ -48,11 +58,23 @@ Catch {
 }
 
 
+
+# ----- Connect to vCenter service so we can deal with the VM
+Try {
+    Connect-VIServer -Server 192.168.1.16 -Credential $VCenterAdmin -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
     Write-Output "Creating VM"
     $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ErrorAction Stop
 
+    Write-Output "Starting VM"
     Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
     # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
@@ -79,12 +101,17 @@ Write-Output "Checking if Temp directory exists"
 $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
-Write-Output "Copying DSC resources to VM"
 # ----- Remove the drive if it exists
 if ( Get-PSDrive -Name RemoteDrive ) { Remove-PSDrive -Name RemoteDrive }
-
 New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin
 
+# ----- Copy LCM Config and run on remote system
+Write-Output "Configuring LCM"
+Copy-Item -Path $PSScriptRoot\mof\LCMConfig.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
+
+Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin  -ScriptText "Set-DscLocalConfigurationManager -path c:\temp"
+
+Write-Output "Copying DSC resources to VM"
 Write-Output "Copy MOFs"
 Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destination RemoteDrive:\temp\localhost.mof
 COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
