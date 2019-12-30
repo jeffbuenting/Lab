@@ -2,14 +2,17 @@
 $ConfigData = @{             
     AllNodes = @(             
         @{             
-            Nodename = "KW-DC1"             
-            Role = "Primary DC"             
-            DomainName = 'kings-wood.local'
-            IPAddress = '10.10.10.10'
-            SubnetMask = '255.255.255.0'
+            Nodename = "KW-Router1"             
+            Role = "Router"           
+            ResourcePool = 'Lab'  
+            IPAddress = '10.10.10.1/24'
             DefaultGateway = '10.10.10.1'       
             SWitch = 'vSwitch1'
-            PortGroup = 'LAB - 10.10.10.x'     
+            PortGroup = 'LAB - 10.10.10.x' 
+            ExternalIPAddress = '192.168.1.10/24'
+            ExternalDefaultGateway = '192.168.1.1' 
+            ExternalSwitch = 'VSwitch0'   
+            ExternalPortGroup = '192.168.1.x'
             RetryCount = 20              
             RetryIntervalSec = 30            
             PSDscAllowDomainUser = $True
