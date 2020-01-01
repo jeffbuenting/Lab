@@ -66,5 +66,12 @@ configuration New-LABRouter
             Ensure = "Present"
             Name = "Routing"
         }
+
+        WindowsFeature RSAT-Tools
+        {
+            Name = 'RSAT-RemoteAccess'
+            Ensure = 'Present'
+            IncludeAllSubFeature = $True
+        }
     }
 }

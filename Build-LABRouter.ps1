@@ -54,6 +54,8 @@ Try {
     Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.ExternalSwitch -Name $ConfigData.AllNodes.ExternalPortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop 
     New-NetworkAdapter -vm $VM -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -StartConnected -ErrorAction Stop
     
+    Set-VM -VM $VM -NumCpu 2 -MemoryGB 2
+
     Write-Verbose "Starting VM"
     Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
