@@ -72,21 +72,41 @@ Catch {
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
     Write-Output "Creating VM"
-    $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ErrorAction Stop
+    $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -ErrorAction Stop
 
+    # ----- Attach the VM to the portgroup
+    Write-verbose "Attaching NIC to correct network"
+    Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+
+    Write-Verbose "Modifying CPU and memory"
+    Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -confirm:$False
+     
     Write-Output "Starting VM"
     Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
-    # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+    # ----- and because we don't have a DHCP server on this network we need to apply an IP
+    $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
+    Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
 
-    # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
-    while ( -Not $VM.Guest.HostName ) {
-        Write-output "Pausing 15 Seconds..."
-        Sleep -Seconds 15
+    # ----- Sometimes the VM hostname and IPAddress to be correct does not get filled in.  Waiting for a bit and trying again.
+    $Timeout = 5
+
+    $Trys = 0
+    Do  {
+        Write-Verbose "Pausing ..."
+        Sleep -Seconds 30
 
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-    }
+
+        $Trys++
+
+        Write-Verbose "HostName = $($VM.Guest.HostName)"
+        Write-Verbose "IP = $($VM.Guest.IPAddress)"
+        Write-Verbose "Trys = $Trys"
+    } while ( ( -Not $VM.Guest.HostName ) -and ( $VM.Guest.IPAddress[0] -notmatch '\d{1,3].\d{1,3].\d{1,3].\d{1,3]}') -and ($Trys -lt $Timeout ) )
+
+    if ( $Trys -eq $Timeout ) { Throw "Build-NewLABDomain : TimeOut getting VM info" }
+
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -96,20 +116,49 @@ Catch {
   
 $IPAddress = $VM.Guest.IpAddress[0]
 
-Write-Output "Checking if Temp directory exists"
+Write-Verbose "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
 $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
+
 # ----- Remove the drive if it exists
+Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
 if ( Get-PSDrive -Name RemoteDrive ) { Remove-PSDrive -Name RemoteDrive }
-New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin
+
+Try {
+    #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin -ErrorAction Stop
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : mapping to root.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 # ----- Copy LCM Config and run on remote system
 Write-Output "Configuring LCM"
 Copy-Item -Path $PSScriptRoot\mof\LCMConfig.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
 
-Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin  -ScriptText "Set-DscLocalConfigurationManager -path c:\temp"
+$Timeout = 5
+
+$DSCSuccess = $False
+$Trys = 0
+Do {
+    Try {
+        Start-Sleep -Seconds 60
+
+        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin  -ScriptText "Set-DscLocalConfigurationManager -path c:\temp -force"
+        $DSCSuccess = $True
+    }
+    Catch {
+        Write-Warning "Problem setting local LCM.  Pausing and then will retry"
+        $DSCSuccess = $False
+        $Trys++
+
+        Write-Verbose "Retrying ..."
+    }
+} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
 
 Write-Output "Copying DSC resources to VM"
 Write-Output "Copy MOFs"
@@ -125,12 +174,31 @@ Write-Output "Copy DSC Resources"
 copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 Copy-Item -path C:\users\600990\Documents\WindowsPowerShell\Modules\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 
-# ----- Pausing as running the script too soon fails.
-Start-Sleep -Seconds 30
+# ----- restarting VM to make sure all services are running
+Get-Service -ComputerName $IPAddress
+
+restart-VM -VM $VM | Wait-Tools
 
 # ----- Run Config MOF on computer
-$Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+$DSCSuccess = $False
+$Trys = 0
+Do {
+    Try {
+        Start-Sleep -Seconds 60
+
+        $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
+        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+        $DSCSuccess = $True
+    }
+    Catch {
+        Write-Warning "Problem running DSC.  Pausing and then will retry"
+        $DSCSuccess = $False
+        $Trys++
+
+        Write-Verbose "Retrying ..."
+    }
+} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
+
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
