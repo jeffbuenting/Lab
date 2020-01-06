@@ -122,7 +122,9 @@ Do {
 Write-Verbose "Copying DSC resources to VM"
 Write-Verbose "Copy MOFs"
 Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destination RemoteDrive:\temp\localhost.mof -Force
-#COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof -Force
+
+# ----- Copy install file.  normally you could use DSC for this, but I am having credential issues with my work laptop
+COpy-Item -Path $PSScriptRoot\tftp\TFTPInstaller.msi -Destination RemoteDrive:\temp\TFTPInstaller.msi -Force
 
 
 # ----- Run Config MOF on computer
