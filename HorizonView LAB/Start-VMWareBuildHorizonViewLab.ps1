@@ -1,9 +1,9 @@
 ﻿$DomainName = 'Kings-wood.local'
-$ADServer = 'KW-DC1'
+$ADServer = 'KW-DC1.kings-wood.local'
 
 
 # ----- Gather Credentials
-$DomainAdmin = (Get-Credential -UserName "$($DomainName)\administrator" -Message "New Domain Admin Credential")
+#$DomainAdmin = (Get-Credential -UserName "$($DomainName)\administrator" -Message "New Domain Admin Credential")
 
 $PSscriptroot
 
