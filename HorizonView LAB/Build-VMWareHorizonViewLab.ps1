@@ -10,11 +10,17 @@ Param (
 
     #[PSCredential]$DomainAdmin,
 
-    [String]$ADServer
+    [String]$ADServer,
+
+    [String]$DSCModulePath,
+
+    [String]$Source = 'C:\Source\VMware'
 )
 
 
 $VerbosePreference = 'Continue'
+
+import-module C:\Scripts\VMWare\VMWare.psd1 -force
 
 ## ----- Create OU for Remote Desktops
 #Write-Verbose "Create OUs for VDI"
@@ -46,6 +52,9 @@ Write-Verbose "Dot sourcing scripts"
 
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
+Write-Verbose "Building DSC MOF"
+if ( -Not (Test-Path "$PSScriptRoot\MOF") ) { New-Item -ItemType Directory -Path "$PSScriptRoot\MOF" }
+
 try {
     LCMConfig -OutputPath $PSSCriptRoot\MOF -ErrorAction Stop
 
@@ -72,9 +81,14 @@ Catch {
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
     Write-Verbose "Creating VM"
-    $Task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync 
+    $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
     
     Write-Verbose "wainting for new-vm to complete"
+
+    
+
+
+
     Write-Verbose $($Task.State )
     while ( $Task.state -ne 'Success' ) {
         Start-Sleep -Seconds 60
@@ -116,7 +130,10 @@ Try {
     Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
 
     Write-Verbose "Starting VM"
-    Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+    $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+
+    Write-Verbose "Waiting for OS Custumizations"
+    wait-vmwareoscustomization -vm $VM -Timeout 900
 
     # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
     $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
@@ -153,8 +170,19 @@ Start-Sleep -Seconds 120
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 $VM.Guest
 
-
+Write-Verbose "Getting IP Address"
 $IPAddress = $VM.Guest.IpAddress[0]
+
+while ( -Not $IPAddress ) {
+    Write-Verbose "IPAddress = $IPaddress"
+    Write-Verbose "Pausing 15 Seconds waiting for IP...."
+    Sleep -Seconds 15
+
+    # ----- regular expression to extract IP address from IPv4 and IPv6 Ip array.
+    $IPAddress = $VM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+}
+
+Write-Verbose "IPAddress = $IPaddress"
 
 Write-Verbose "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
@@ -162,6 +190,7 @@ $CMD = "if ( -Not (Test-Path ""c:\temp"") ) { New-Item -ItemType Directory -Path
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
 # ----- Remove the drive if it exists
+Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
@@ -206,12 +235,13 @@ Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destinat
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
 Write-Verbose "Copy DSC Resources"
-copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path C:\users\600990\Documents\WindowsPowerShell\Modules\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-Item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-Item -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 
 # ----- Source install files
 Write-Verbose "install source"
-copy-item -path C:\Source\VMware\VMware-Horizon-Connection-Server-x86_64-7.10.0-14584133.exe -Destination "RemoteDrive:\Temp" -Recurse -force
+copy-item -path $Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe -Destination "RemoteDrive:\Temp" -Recurse -force
 
 
 # ----- Because I can't get DSC to set the DNS server I am doing before the config runs

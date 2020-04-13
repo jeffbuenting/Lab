@@ -9,6 +9,7 @@ configuration New-ViewConnectionServer
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
+    Import-DSCResource -moduleName xSystemSecurity
 
     Node $AllNodes.Where{$_.Role -eq "ViewConnectionServer"}.Nodename             
     { 
@@ -36,6 +37,7 @@ configuration New-ViewConnectionServer
             AddressFamily  = 'IPv4'
         }
 
+    # ----- DNS is set via powershell prior to running DSC because this does not seem to work.
     #    DnsServerAddress DNSE1
     #    {
     #        #Address        = $Node.DNSServer
@@ -53,8 +55,13 @@ configuration New-ViewConnectionServer
             Credential = $DomainAdmin
         }
 
+        xIEESC DisableESCAdmin {
+            IsEnabled = $False
+            UserRole = "Administrators"
+        }
 
 
+        # ----- Install Connection server
 
     }
 }

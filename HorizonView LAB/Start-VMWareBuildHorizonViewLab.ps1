@@ -1,5 +1,6 @@
 ﻿$DomainName = 'Kings-wood.local'
 $ADServer = 'KW-DC1.kings-wood.local'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 
 
 # ----- Gather Credentials
@@ -7,4 +8,4 @@ $ADServer = 'KW-DC1.kings-wood.local'
 
 $PSscriptroot
 
-& $PSScriptRoot\Build-VMWareHorizonViewLab.ps1 -ADServer $ADServer -DomainAdmin $DomainAdmin -Verbose
+& $PSScriptRoot\Build-VMWareHorizonViewLab.ps1 -ADServer $ADServer -dscModulePath $DSCModulePath -Verbose
