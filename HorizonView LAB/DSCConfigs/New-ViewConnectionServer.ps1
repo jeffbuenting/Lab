@@ -9,7 +9,7 @@ configuration New-ViewConnectionServer
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
-    Import-DSCResource -moduleName xSystemSecurity
+    Import-DSCResource -moduleName computermanagementdsc
 
     Node $AllNodes.Where{$_.Role -eq "ViewConnectionServer"}.Nodename             
     { 
@@ -55,9 +55,9 @@ configuration New-ViewConnectionServer
             Credential = $DomainAdmin
         }
 
-        xIEESC DisableESCAdmin {
-            IsEnabled = $False
-            UserRole = "Administrators"
+        IEEnhancedSecurityConfiguration DisableESCAdmin {
+            Enabled = $False
+            Role = "Administrators"
         }
 
 

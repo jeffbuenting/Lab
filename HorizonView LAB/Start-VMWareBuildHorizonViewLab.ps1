@@ -8,4 +8,4 @@ $DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 
 $PSscriptroot
 
-& $PSScriptRoot\Build-VMWareHorizonViewLab.ps1 -ADServer $ADServer -dscModulePath $DSCModulePath -Verbose
+& $PSScriptRoot\Build-VMWareHorizonViewLab.ps1 -ADServer $ADServer -dscModulePath $DSCModulePath -Timeout 1200 -Verbose

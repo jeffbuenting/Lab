@@ -14,6 +14,8 @@ Param (
 
     [String]$DSCModulePath,
 
+    [int]$Timeout = '900',
+
     [String]$Source = 'C:\Source\VMware'
 )
 
@@ -78,23 +80,22 @@ Catch {
     $ExceptionType = $_.Exception.GetType().Fullname
     Throw "Build-NewLABRouter : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
+
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
     Write-Verbose "Creating VM"
     $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
     
-    Write-Verbose "wainting for new-vm to complete"
+    Write-Verbose "waiting for new-vm to complete"
 
-    
-
-
-
-    Write-Verbose $($Task.State )
+    Write-Verbose "Task State = $($Task.State )"
     while ( $Task.state -ne 'Success' ) {
         Start-Sleep -Seconds 60
 
-        $Task = Get-Task -Id $Task.Id
-        Write-Verbose $($Task.State )
+        Write-Verbose "Still waiting for new-vm to complete"
+
+        $Task = Get-Task -Id $Task.Id -Verbose:$False
+        Write-Verbose "Task State = $($Task.State)"
     }
 
 
@@ -129,11 +130,15 @@ Try {
     Write-Verbose "Setting CPU and Memory"
     Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
 
-    Write-Verbose "Starting VM"
+    Write-Verbose "Starting VM and wait for VM Tools to start."
     $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
-    Write-Verbose "Waiting for OS Custumizations"
-    wait-vmwareoscustomization -vm $VM -Timeout 900
+
+
+    Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+    wait-vmwareoscustomization -vm $VM -Timeout $Timeout
+
+
 
     # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
     $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
@@ -145,13 +150,13 @@ Try {
 
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
     }
+
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
     Throw "Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
-
 
 Write-verbose "Waiting for VM to start"
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName
@@ -184,10 +189,18 @@ while ( -Not $IPAddress ) {
 
 Write-Verbose "IPAddress = $IPaddress"
 
-Write-Verbose "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
-$CMD = "if ( -Not (Test-Path ""c:\temp"") ) { New-Item -ItemType Directory -Path ""c:\temp"" }"
-Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+Try {
+    Write-Verbose "Checking if Temp directory exists"
+
+    $CMD = "if ( -Not (Test-Path ""c:\temp"") ) { New-Item -ItemType Directory -Path ""c:\temp"" }"
+    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 # ----- Remove the drive if it exists
 Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
@@ -259,7 +272,10 @@ Write-Verbose "Final DSC MOF"
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+
+        Write-Output "Results = $($Result | out-string)"
+
         $DSCSuccess = $True
 
 #    }
