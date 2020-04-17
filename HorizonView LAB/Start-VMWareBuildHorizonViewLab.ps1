@@ -1,6 +1,7 @@
 ﻿$DomainName = 'Kings-wood.local'
 $ADServer = 'KW-DC1.kings-wood.local'
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 
 # ----- Gather Credentials

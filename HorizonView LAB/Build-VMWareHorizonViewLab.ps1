@@ -22,7 +22,9 @@ Param (
 
 $VerbosePreference = 'Continue'
 
-import-module C:\Scripts\VMWare\VMWare.psd1 -force
+$IsVerbose = $False
+if ( $VerbosePreference -eq 'Continue' ) { $IsVerbose = $True }
+
 
 ## ----- Create OU for Remote Desktops
 #Write-Verbose "Create OUs for VDI"
@@ -136,7 +138,7 @@ Try {
 
 
     Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-    wait-vmwareoscustomization -vm $VM -Timeout $Timeout
+    wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
 
 

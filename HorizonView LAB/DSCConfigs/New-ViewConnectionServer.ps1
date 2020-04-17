@@ -9,7 +9,6 @@ configuration New-ViewConnectionServer
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
-    Import-DSCResource -moduleName computermanagementdsc
 
     Node $AllNodes.Where{$_.Role -eq "ViewConnectionServer"}.Nodename             
     { 
@@ -54,12 +53,6 @@ configuration New-ViewConnectionServer
             DomainName = $Node.DomainName
             Credential = $DomainAdmin
         }
-
-        IEEnhancedSecurityConfiguration DisableESCAdmin {
-            Enabled = $False
-            Role = "Administrators"
-        }
-
 
         # ----- Install Connection server
         # -----https://thevirtualist.org/automated-installation-vmware-view-components/
