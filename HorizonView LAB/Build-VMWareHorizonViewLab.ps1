@@ -4,11 +4,11 @@
 
 [CmdletBinding()]
 Param (
-   # [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
 
-   #[PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
+   [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
 
-    #[PSCredential]$DomainAdmin,
+    [PSCredential]$DomainAdmin,
 
     [String]$ADServer,
 
@@ -83,96 +83,111 @@ Catch {
     Throw "Build-NewLABRouter : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-Try {
-    # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-    Write-Verbose "Creating VM"
-    $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
+# ----- Only do this if the VM does not exist.  This allows us to rerun this script if there is an error and pick up where it left off
+
+if ( -Not (Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue) ) {
+    Write-Verbose "VM does not exist, Creating"
+
+    Try {
+        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+        Write-Verbose "Creating VM"
+        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
     
-    Write-Verbose "waiting for new-vm to complete"
+        Write-Verbose "waiting for new-vm to complete"
 
-    Write-Verbose "Task State = $($Task.State )"
-    while ( $Task.state -ne 'Success' ) {
-        Start-Sleep -Seconds 60
+        Write-Verbose "Task State = $($Task.State )"
+        while ( $Task.state -ne 'Success' ) {
+            Start-Sleep -Seconds 60
 
-        Write-Verbose "Still waiting for new-vm to complete"
+            Write-Verbose "Still waiting for new-vm to complete"
 
-        $Task = Get-Task -Id $Task.Id -Verbose:$False
-        Write-Verbose "Task State = $($Task.State)"
+            $Task = Get-Task -Id $Task.Id -Verbose:$False
+            Write-Verbose "Task State = $($Task.State)"
+        }
+
+
+        write-verbose "VM done"
+        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
+    Try {
 
-    write-verbose "VM done"
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
-
-Try {
-
-    # ----- Attach the VM to the portgroup
-    Write-verbose "Attaching NIC to correct network"
-    $VMNIC = Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' 
-    Write-Verbose "NIC = $($VMNIC | Out-String)"
+        # ----- Attach the VM to the portgroup
+        Write-verbose "Attaching NIC to correct network"
+        $VMNIC = Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' 
+        Write-Verbose "NIC = $($VMNIC | Out-String)"
     
-    $PG = (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction SilentlyContinue)
-    Write-Verbose "PG = $($PG | Out-String)"
+        $PG = (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction SilentlyContinue)
+        Write-Verbose "PG = $($PG | Out-String)"
 
-    $VMNIC | Set-NetworkAdapter -Portgroup $PG -Confirm:$False -ErrorAction SilentlyContinue
-
-
-    #$VMNic = Get-NetworkAdapter -vm $VM -ErrorAction Stop 
-    #if ( $VMNIC.NetworkName -ne $ConfigData.AllNodes.PortGroup ) {
-    #    $VMNIC | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
-    #}
-
-    Write-Verbose "Setting CPU and Memory"
-    Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
-
-    Write-Verbose "Starting VM and wait for VM Tools to start."
-    $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+        $VMNIC | Set-NetworkAdapter -Portgroup $PG -Confirm:$False -ErrorAction SilentlyContinue
 
 
+        #$VMNic = Get-NetworkAdapter -vm $VM -ErrorAction Stop 
+        #if ( $VMNIC.NetworkName -ne $ConfigData.AllNodes.PortGroup ) {
+        #    $VMNIC | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+        #}
 
-    Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-    wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+        Write-Verbose "Setting CPU and Memory"
+        Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
+
+        Write-Verbose "Starting VM and wait for VM Tools to start."
+        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
 
 
-    # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
-    # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
-    while ( -Not $VM.Guest.HostName ) {
+
+        Write-Verbose "Getting VM INfo"
+        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
+        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+        # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
+        while ( -Not $VM.Guest.HostName ) {
+            Write-Verbose "Pausing 15 Seconds..."
+            Sleep -Seconds 15
+
+            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+        }
+
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
+
+    Write-verbose "Waiting for VM to start"
+    $VM = Get-VM -Name $Configdata.AllNodes.NodeName
+
+    while ( $VM.Guest.State -ne 'Running' ) {
         Write-Verbose "Pausing 15 Seconds..."
         Sleep -Seconds 15
 
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
     }
 
+    Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
+    $Seconds = 300
+    $T = 0
+    while ( $T -le $Seconds ) { 
+        Write-Verbose "Waiting for VM to 'Settle'..."
+        Start-Sleep -Seconds 5
+        $T += 5
+    }
+
 }
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+Else {
+    Write-Verbose "VM Exists running config"
 }
-
-Write-verbose "Waiting for VM to start"
-$VM = Get-VM -Name $Configdata.AllNodes.NodeName
-
-while ( $VM.Guest.State -ne 'Running' ) {
-    Write-Verbose "Pausing 15 Seconds..."
-    Sleep -Seconds 15
-
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-}
-
-Write-verbose "sleep and reget info"
-Start-Sleep -Seconds 120
-
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 $VM.Guest
@@ -190,6 +205,8 @@ while ( -Not $IPAddress ) {
 }
 
 Write-Verbose "IPAddress = $IPaddress"
+
+
 
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
 Try {
@@ -274,7 +291,9 @@ Write-Verbose "Final DSC MOF"
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+
+        # ----- Invoke-VMScript will error as the VM DSC config forces a reboot.
+        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD  -ErrorAction SilentlyContinue
 
         Write-Output "Results = $($Result | out-string)"
 
@@ -292,15 +311,37 @@ Write-Verbose "Final DSC MOF"
 #    }
 #} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
 
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
 
+# ----- Wait for vm to reboot
+Write-Verbose "Waiting for VM "
+While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction SilentlyContinue ) ) {
+    Start-Sleep -s 5
+    Write-Verbose "Still Waiting"
+}
+
+
+Write-Verbose "installing VMWare Horizon View server"
+
+# ----- I broke this up as the quoting was confusing
+$Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""'
+$CMD = "Start-Process -FilePath 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' -ArgumentList $Arguments -wait -verb Runas"
+
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD 
+
+#invoke-Command -ComputerName $IPAddress -Credential $DOmainAdmin -ScriptBlock {
+    # ----- I broke this up as the quoting was confusing
+   # $Arguments = '/s /v /qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR="C:\Program Files\VMware\VMware Horizon View Client" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER="yep"'
+#    & 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' /s /v /qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR="C:\Program Files\VMware\VMware View\Server\" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER="yep"
+#}
 
 
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
 
-
+Write-Verbose "Done"
 
 
 #
