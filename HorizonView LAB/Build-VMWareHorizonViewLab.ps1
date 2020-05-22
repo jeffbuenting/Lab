@@ -326,16 +326,11 @@ Write-Verbose "installing VMWare Horizon View server"
 
 # ----- I broke this up as the quoting was confusing
 $Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""'
-$CMD = "Start-Process -FilePath 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' -ArgumentList $Arguments -wait -verb Runas"
+$CMD = "& 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' $Arguments"
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD 
-
-#invoke-Command -ComputerName $IPAddress -Credential $DOmainAdmin -ScriptBlock {
-    # ----- I broke this up as the quoting was confusing
-   # $Arguments = '/s /v /qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR="C:\Program Files\VMware\VMware Horizon View Client" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER="yep"'
-#    & 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' /s /v /qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR="C:\Program Files\VMware\VMware View\Server\" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER="yep"
-#}
-
+# ----- DNS doesn't seem to be working in by environment for this server so I need to add a config file that does this
+#https://kb.vmware.com/s/article/2144768
 
 
 # ----- Clean up
