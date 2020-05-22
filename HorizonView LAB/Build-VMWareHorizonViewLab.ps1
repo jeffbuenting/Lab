@@ -329,9 +329,17 @@ $Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 I
 $CMD = "& 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' $Arguments"
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
-# ----- DNS doesn't seem to be working in by environment for this server so I need to add a config file that does this
+# ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
+'checkOrigin=false' | Set-Content -Path "RemoteDrive:\Program Files\VMware\VMware View\Server\locked.properties"
 
+Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
+
+# ----- Add License to Server
+Write-Verbose "Adding license key to View Connection Server"
+
+$CMD = "Set-License -Key $ConfigDatat.AllNodes.ViewLicense"
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
