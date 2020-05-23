@@ -10,13 +10,20 @@ Param (
 
     [PSCredential]$DomainAdmin,
 
+    [PSCredential]$VCSAViewUser,
+
+    [PSCredential]$InstantCloneUser,
+
     [String]$ADServer,
 
     [String]$DSCModulePath,
 
     [int]$Timeout = '900',
 
+    [String]$HVLicense,
+
     [String]$Source = 'C:\Source\VMware'
+
 )
 
 
@@ -75,7 +82,7 @@ Catch {
 
 # ----- Connect to vCenter service so we can deal with the VM
 Try {
-    Connect-VIServer -Server 192.168.1.16 -Credential $VCenterAdmin -ErrorAction Stop
+    Connect-VIServer -Server $ConfigData.AllNodes.VCSA -Credential $VCenterAdmin -ErrorAction Stop
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -329,17 +336,102 @@ $Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 I
 $CMD = "& 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' $Arguments"
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
+# -------------------------------------------------------------------------------------
+# Configure Horizon View connection server after install
+# -------------------------------------------------------------------------------------
+
+
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
 'checkOrigin=false' | Set-Content -Path "RemoteDrive:\Program Files\VMware\VMware View\Server\locked.properties"
 
 Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
 
-# ----- Add License to Server
-Write-Verbose "Adding license key to View Connection Server"
 
-$CMD = "Set-License -Key $ConfigDatat.AllNodes.ViewLicense"
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+# ----- Create vCenter AD user
+if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
+    Write-Verbose "Creating vCenter AD User for Connection Server"
+
+    $VCenterAcct = New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $VCSAViewUser.UserName -Description "vCenter AD account for Connection Server" -Path $ConfigData.AllNodes.ServiceAcctsOU -AccountPassword $VCSAViewUser.Password -Enabled $True
+}
+
+# ----- Create Instant Clone AD User
+if ( -Not ([bool]( Get-ADUser -Server $ADServer -Filter {SamAccountName -eq "$($InstantCloneUser.UserName)"} -Credential $DomainAdmin ) ) ) {
+    Write-Verbose "Creating Instant Clone AD User"
+
+    $ICAcct = New-ADUser -Server $ADServer -Credential $DOmainAdmin -Name $InstantCloneUser.UserName -AccountPassword $InstantCloneUser.Password -Description "Instant Clone User" -Path $ConfigData.AllNodes.ServiceAcctsOU -Enabled $True
+}
+
+# ----- Create VCSA Role and assign vCenter User to it
+Write-Verbose "Creating VCSA Role for vCenter View user"
+
+$Priviledges = 'Datastore.AllocateSpace','Folder.Create','Folder.Delete','Global.VCServer','Host.Config.AdvancedConfig','Resource.AssignVMToPool',
+    'System.Anonymous','System.Read','System.View','VirtualMachine.Config.AddRemoveDevice','VirtualMachine.Config.AdvancedConfig',
+    'VirtualMachine.Config.EditDevice','VirtualMachine.Interact.PowerOff','VirtualMachine.Interact.PowerOn','VirtualMachine.Interact.Reset',
+    'VirtualMachine.Interact.SESparseMaintenance','VirtualMachine.Interact.Suspend','VirtualMachine.Inventory.Create','VirtualMachine.Inventory.CreateFromExisting',
+    'VirtualMachine.Inventory.Delete','VirtualMachine.Provisioning.Clone','VirtualMachine.Provisioning.CloneTemplate',
+    'VirtualMachine.Provisioning.Customize','VirtualMachine.Provisioning.DeployTemplate','VirtualMachine.Provisioning.ReadCustSpecs' 
+
+if ( -Not ( Get-VIRole -name $ConfigData.AllNodes.VCSAViewRole -ErrorAction SilentlyContinue ) ) {
+    Write-Verbose "Creating"
+
+    New-VIRole -name $ConfigData.AllNodes.VCSAViewRole -Privilege ( Get-VIPrivilege -Server $ConfigData.Allnodes.VCSAServer -Id $Priviledges ) 
+
+    # ----- Do I need Set-VIRole here? https://docs.vmware.com/en/VMware-App-Volumes/2.14/com.vmware.appvolumes.admin.doc/GUID-505624F3-F3EB-428C-BEA0-5BD7F6095A1F.html
+
+}
+Else {
+    Write-Verbose "Role already exists"
+}
+
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+# ----- regular expression to extract IP address from IPv4 and IPv6 Ip array.
+$IPAddress = $VM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+
+# ----- View API doc : https://code.vmware.com/apis/956/view
+# ----- Connect to View Server
+
+$HV = Connect-HVServer -Server $IPAddress -Credential $DomainAdmin
+
+# ----- Set license
+if ( -Not ( ($HV.ExtensionData.License.License_Get()).Licensed ) ) {
+    Write-Verbose "License key does not exist.  Installing"
+
+    $HV.ExtensionData.License.License_Set( $HVLicense )
+}
+Else {
+    Write-Verbose "License installed"
+}
+
+# ----- Add vCenter Server to View
+if ( (($HV.ExtensionData.VirtualCenter.VirtualCenter_List()).ServerSpec.Servername -ne $ConfigData.AllNodes.VCSA) -or (-Not ($HV.ExtensionData.VirtualCenter.VirtualCenter_List()))  ) {
+    Write-Verbose "vCenter Server is not configured"
+
+    # ------ https://www.retouw.nl/vsphere/adding-vcenter-server-to-horizon-view-using-the-apis/
+    $VCSpec = New-object -TypeName VMware.Hv.VirtualCenterSpec
+    $VCSpec.ServerSpec = New-Object -TypeName VMware.Hv.ServerSpec
+    $VCSpec.ServerSpec.ServerName = $ConfigData.AllNodes.VCSA
+    $VCSpec.ServerSpec.port = 443
+    $VCSpec.ServerSpec.UseSSL = $True
+    $VCSpec.ServerSpec.UserName = $VCenterAdmin.UserName
+
+    # ----- convert password to HV securestring
+    $vcpassword=$VCenterAdmin.Password
+    $temppw = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($vcPassword)
+    $PlainvcPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($temppw)
+    $vcencPassword = New-Object VMware.Hv.SecureString
+    $enc = [system.Text.Encoding]::UTF8
+    $vcencPassword.Utf8String = $enc.GetBytes($PlainvcPassword)
+
+    $spec.ServerSpec.password = $vcencPassword
+    $VCSpec.ServerSpec.ServerType = "VIRTUAL_Center"
+
+    $HV.ExtensionData.VirtualCenter.VirtualCenter_Create($HV.ExtensionData,$VCSpec)
+}
+Else {
+    Write-Verbose "vCenter Server already associated with View"
+}
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive

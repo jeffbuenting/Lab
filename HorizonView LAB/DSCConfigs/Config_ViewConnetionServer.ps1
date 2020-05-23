@@ -2,8 +2,7 @@
 $ConfigData = @{             
     AllNodes = @(             
         @{             
-            Nodename = "KW-HorConn01"             
-            Role = "ViewConnectionServer"           
+            Nodename = "KW-HorConn01"                        
             ResourcePool = 'Management'  
             IPAddress = '192.168.1.17/24'
             DefaultGateway = '192.168.1.1' 
@@ -17,7 +16,10 @@ $ConfigData = @{
             PSDscAllowDomainUser = $True
             PsDscAllowPlainTextPassword = $true 
             VMTemplate = "WIN2016Template" 
-            ESXHost = '192.168.1.15'          
+            ESXHost = '192.168.1.15'    
+            ServiceAcctsOU = 'OU=VMWare Service Accounts,DC=kings-wood,DC=local' 
+            VCSA = '192.168.1.16' 
+            VCSAViewRole = 'View Service Account'
         }            
     )             
 }  
