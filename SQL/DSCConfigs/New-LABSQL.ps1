@@ -4,7 +4,13 @@ configuration New-LABSQL
    param             
     (                    
         [Parameter(Mandatory = $true)]            
-        [pscredential]$domainCred            
+        [pscredential]$domainCred,
+        
+        [Parameter(Mandatory = $true)]            
+        [pscredential]$SQLSvcAccount,
+        
+        [Parameter(Mandatory = $true)]            
+        [pscredential]$SAAccount    
     )             
     
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
@@ -39,6 +45,9 @@ configuration New-LABSQL
             Features            = 'SQLENGINE'
             SourcePath          = 'R:\'
             SQLSysAdminAccounts = @('Administrators')
+            SQLSvcAccount       = $SQLSvcAccount
+            SecurityMode        = 'SQL'
+            SAPwd               = $SAAccount.getnetworkcredential().Password
             DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
         }
     }

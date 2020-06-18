@@ -15,6 +15,10 @@ Param (
 
     [PSCredential]$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential"),
 
+    [PSCredential]$SQLSvcAccount,
+
+    [PSCredential]$SAAccount,
+
     [String]$DSCModulePath
 )
 
@@ -41,6 +45,8 @@ try {
     Write-Output "BUilding SQL MOF"
     New-LABSQL -ConfigurationData $ConfigData `
        -domainCred $DomainAdmin `
+       - SQLSvcAccount $SQLSvcAccount `
+       -SAAccount $SAAccount `
         -OutputPath $PSScriptRoot\MOF `
         -ErrorAction Stop
 }
@@ -120,8 +126,8 @@ Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
-    #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin -ErrorAction Stop
-    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($Configdata.AllNodes.IPAddress)\c$" -Credential $LocalAdmin -ErrorAction Stop
+    #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -176,6 +182,7 @@ Try {
     Write-Output "Copy DSC Resources"
     copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     copy-item -path $DSCModulePath\sqlserverdsc -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    copy-item -path $DSCModulePath\ccdromdriveletter -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -187,13 +194,16 @@ Catch {
  Try {   
     Write-Verbose "Mounting WINPE" 
 
-    Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $Configdata.AllNodes.ISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
+    Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $Configdata.AllNodes.SQLISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
     Throw "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
 }
+
+# ----- Create SQL Account on AD
+
 
 restart-VM -VM $VM -Confirm:$False | Wait-Tools
 
@@ -206,6 +216,8 @@ $DSCSuccess = $False
 $Trys = 0
 Do {
     Try {
+        Write-Verbose "Running SQL DSC config"
+
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
