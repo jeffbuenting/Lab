@@ -24,7 +24,9 @@ Param (
 
     [PSCredential]$ADRecoveryAcct = (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"),
 
-    [PSCredential]$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential")
+    [PSCredential]$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential"),
+
+    [String]$DSCModulePath
 )
 
 
@@ -43,7 +45,7 @@ Write-Output "Dot sourcing scripts"
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
 try {
-    LCMConfig -OutputPath C:\Scripts\Lab\MOF -ErrorAction Stop
+    LCMConfig -OutputPath $PSScriptRoot\MOF -ErrorAction Stop
 
     New-LABDomain -ConfigurationData $ConfigData `
         -safemodeAdministratorCred $ADRecoveryAcct `
@@ -124,7 +126,7 @@ Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
 # ----- Remove the drive if it exists
 Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
-if ( Get-PSDrive -Name RemoteDrive ) { Remove-PSDrive -Name RemoteDrive }
+if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
     #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin -ErrorAction Stop
@@ -137,8 +139,16 @@ Catch {
 }
 
 # ----- Copy LCM Config and run on remote system
-Write-Output "Configuring LCM"
-Copy-Item -Path $PSScriptRoot\mof\LCMConfig.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
+Try {
+    Write-Verbose "Configuring LCM"
+    Copy-Item -Path $PSScriptRoot\mof\LCMConfig.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error Copying LCMConfig.Meta.Mof.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
 
 $Timeout = 5
 
@@ -160,24 +170,36 @@ Do {
     }
 } While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
 
-Write-Output "Copying DSC resources to VM"
-Write-Output "Copy MOFs"
-Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destination RemoteDrive:\temp\localhost.mof
-COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
+
+Try {
+    Write-Output "Copying DSC resources to VM"
+    Write-Output "Copy MOFs"
+    Copy-Item -Path "$PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof" -Destination RemoteDrive:\temp\localhost.mof -ErrorAction Stop
+#    COpy-Item -Path "$PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof" -Destination RemoteDrive:\temp\localhost.meta.mof
 
 
-#copy-item -path C:\Scripts\lab\MOF\KW-DC1.mof -Destination RemoteDrive:\temp\localhost.mof
-#copy-item -path C:\Scripts\lab\MOF\KW-DC1.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
+    #copy-item -path C:\Scripts\lab\MOF\KW-DC1.mof -Destination RemoteDrive:\temp\localhost.mof
+    #copy-item -path C:\Scripts\lab\MOF\KW-DC1.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof
 
-# ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
-Write-Output "Copy DSC Resources"
-copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path C:\users\600990\Documents\WindowsPowerShell\Modules\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+    # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
+    Write-Output "Copy DSC Resources"
+    copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    Copy-Item -path $DSCModulePath\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error Copying DSC Resources.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 # ----- restarting VM to make sure all services are running
-Get-Service -ComputerName $IPAddress
+#Get-Service -ComputerName $IPAddress
 
-restart-VM -VM $VM | Wait-Tools
+restart-VM -VM $VM -Confirm:$False | Wait-Tools
+
+# ----- Timed out waiting for tools in my envionment
+Start-Sleep -Seconds 120
+
 
 # ----- Run Config MOF on computer
 $DSCSuccess = $False

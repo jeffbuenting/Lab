@@ -4,8 +4,10 @@
 Param (
     [PSCredential]$DomainAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
 
-    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" )
-    )
+    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+
+    [String]$DSCModulePath
+)
 
 
 # ----- Dot source configs and DSC scripts
@@ -23,7 +25,7 @@ Write-Verbose "Dot sourcing scripts"
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
 try {
-    LCMConfig -OutputPath C:\Scripts\Lab\MOF -ErrorAction Stop
+    LCMConfig -OutputPath $PSScriptRoot\MOF -ErrorAction Stop
 
     New-LABDHCP -ConfigurationData $ConfigData `
         -OutputPath $PSScriptRoot\MOF `
@@ -127,7 +129,7 @@ COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Des
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
 Write-Verbose "Copy DSC Resources"
-copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xDHCPServer -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+copy-item -path $DSCModulePath\xDHCPServer -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 
 # ----- Run Config MOF on computer
 $DSCSuccess = $False
