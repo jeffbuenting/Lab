@@ -4,12 +4,17 @@
 #$ADRecoveryAcct = (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password")
 #$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential")
 
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+
 # ----- Build Router
-#. $PSScriptRoot\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -Verbose
+#. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -Verbose
 
 # ----- Build AD
-#. $PSScriptRoot\Build-newLABDomain.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -ADRecoveryAcct $ADRecoveryAcct -DomainAdmin $DomainAdmin -Verbose
+#. $PSScriptRoot\Domain\Build-newLABDomain.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -ADRecoveryAcct $ADRecoveryAcct -DomainAdmin $DomainAdmin -DSCModulePath $DSCModulePath -Verbose
 
 # ----- Build AD
-. $PSScriptRoot\Add-LABDHCP.ps1 -VCenterAdmin $VCenterAdmin  -DomainAdmin $DomainAdmin -Verbose
+. $PSScriptRoot\Domain\Add-LABDHCP.ps1 -VCenterAdmin $VCenterAdmin  -DomainAdmin $DomainAdmin -DSCModulePath $DSCModulePath -Verbose
 
+# ----- Build TFTP
+#. $PSScriptRoot\Build-LABTFTPServer.ps1 -VCenterAdmin $VCenterAdmin  -LocalAdmin $LocalAdmin -Verbose
