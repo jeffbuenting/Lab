@@ -125,7 +125,7 @@ Do {
 Write-Verbose "Copying DSC resources to VM"
 Write-Verbose "Copy MOFs"
 Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destination RemoteDrive:\temp\localhost.mof -Force
-COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof -Force
+#COpy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof -Force
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
 Write-Verbose "Copy DSC Resources"
