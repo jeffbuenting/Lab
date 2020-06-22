@@ -47,7 +47,7 @@ configuration New-LABSQL
             SQLSysAdminAccounts = @('Administrators')
             SQLSvcAccount       = $SQLSvcAccount
             SecurityMode        = 'SQL'
-            SAPwd               = $SAAccount.getnetworkcredential().Password
+            SAPwd               = $SAAccount
             DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
         }
     }

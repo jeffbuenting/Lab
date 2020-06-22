@@ -44,9 +44,9 @@ try {
 
     Write-Output "BUilding SQL MOF"
     New-LABSQL -ConfigurationData $ConfigData `
-       -domainCred $DomainAdmin `
-       - SQLSvcAccount $SQLSvcAccount `
-       -SAAccount $SAAccount `
+        -domainCred $DomainAdmin `
+        -SQLSvcAccount $SQLSvcAccount `
+        -SAAccount $SAAccount `
         -OutputPath $PSScriptRoot\MOF `
         -ErrorAction Stop
 }
@@ -68,49 +68,56 @@ Catch {
     Throw "Build-NewLABDomain : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-Try {
-    # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-    Write-Output "Creating VM"
-    $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -ErrorAction Stop
+# ----- Build new VM if one does not already exist
+if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue ) ) {
 
-    # ----- Attach the VM to the portgroup
-    Write-verbose "Attaching NIC to correct network"
-    Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+    Try {
+        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+        Write-Output "Creating VM"
+        $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -ErrorAction Stop
 
-    Write-Verbose "Modifying CPU and memory"
-    Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -confirm:$False
+        # ----- Attach the VM to the portgroup
+        Write-verbose "Attaching NIC to correct network"
+        Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+
+        Write-Verbose "Modifying CPU and memory"
+        Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -confirm:$False
      
-    Write-Output "Starting VM"
-    Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+        Write-Output "Starting VM"
+        Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
-    # ----- and because we don't have a DHCP server on this network we need to apply an IP
-    $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
-    Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
+        # ----- and because we don't have a DHCP server on this network we need to apply an IP
+        $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
+        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
 
-    # ----- Sometimes the VM hostname and IPAddress to be correct does not get filled in.  Waiting for a bit and trying again.
-    $Timeout = 5
+        # ----- Sometimes the VM hostname and IPAddress to be correct does not get filled in.  Waiting for a bit and trying again.
+        $Timeout = 5
 
-    $Trys = 0
-    Do  {
-        Write-Verbose "Pausing ..."
-        Sleep -Seconds 30
+        $Trys = 0
+        Do  {
+            Write-Verbose "Pausing ..."
+            Sleep -Seconds 30
 
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
-        $Trys++
+            $Trys++
 
-        Write-Verbose "HostName = $($VM.Guest.HostName)"
-        Write-Verbose "IP = $($VM.Guest.IPAddress)"
-        Write-Verbose "Trys = $Trys"
-    } while ( ( -Not $VM.Guest.HostName ) -and ( $VM.Guest.IPAddress[0] -notmatch '\d{1,3].\d{1,3].\d{1,3].\d{1,3]}') -and ($Trys -lt $Timeout ) )
+            Write-Verbose "HostName = $($VM.Guest.HostName)"
+            Write-Verbose "IP = $($VM.Guest.IPAddress)"
+            Write-Verbose "Trys = $Trys"
+        } while ( ( -Not $VM.Guest.HostName ) -and ( $VM.Guest.IPAddress[0] -notmatch '\d{1,3].\d{1,3].\d{1,3].\d{1,3]}') -and ($Trys -lt $Timeout ) )
 
-    if ( $Trys -eq $Timeout ) { Throw "Build-NewLABDomain : TimeOut getting VM info" }
+        if ( $Trys -eq $Timeout ) { Throw "Build-NewLABDomain : TimeOut getting VM info" }
 
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Build-NewLABDomain : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
 }
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABDomain : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+Else {
+    Write-Verbose "VM already exists.  Continuing to configuration"
 }
   
 $IPAddress = $VM.Guest.IpAddress[0]
@@ -203,7 +210,22 @@ Catch {
 }
 
 # ----- Create SQL Account on AD
+# ----- create accounts for SQL
+write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
 
+Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName  -ScriptBlock {
+    $SQLSVC = $Using:SQLSvcAccount
+
+    if ( ( Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Stop ) ) {
+        Write-Verbose "$($SQLSvc.Username) already exists"
+    }
+    Else {
+        Write-Verbose "Creating $($SQLSvc.Username)"
+
+        New-ADUser -Name $SQLSvc.UserName -Path $ConfigData.AllNodes.OU -AccountPassword $SQLSvc.GetNetworkCredential().Password -Enabled $true
+    }
+
+}
 
 restart-VM -VM $VM -Confirm:$False | Wait-Tools
 
