@@ -17,7 +17,8 @@ $ConfigData = @{
             PsDscAllowPlainTextPassword = $true 
             VMTemplate = "WIN2016Template" 
             ESXHost = '192.168.1.15'   
-            SQLISO = '[LocalHDD] ISO/SQL/SQLServer2019-x64-ENU.iso'        
+            SQLISO = '[LocalHDD] ISO/SQL/SQLServer2019-x64-ENU.iso' 
+            OU = 'cn=Managed Service Accounts,dc=kings-wood,dc=local'
         }            
     )             
 }  

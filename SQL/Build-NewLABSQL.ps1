@@ -120,6 +120,8 @@ Else {
     Write-Verbose "VM already exists.  Continuing to configuration"
 }
   
+$VM = Get-VM -Name $ConfigData.AllNodes.NodeName
+
 $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
@@ -213,21 +215,26 @@ Catch {
 # ----- create accounts for SQL
 write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
 
-Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName  -ScriptBlock {
+$OU = $ConfigData.AllNodes.OU
+
+Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+    $VerbosePreference = $Using:VerbosePreference
     $SQLSVC = $Using:SQLSvcAccount
 
-    if ( ( Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Stop ) ) {
+    $U = Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Ignore
+
+    if ( $U ) {
         Write-Verbose "$($SQLSvc.Username) already exists"
     }
     Else {
         Write-Verbose "Creating $($SQLSvc.Username)"
 
-        New-ADUser -Name $SQLSvc.UserName -Path $ConfigData.AllNodes.OU -AccountPassword $SQLSvc.GetNetworkCredential().Password -Enabled $true
+        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
     }
 
 }
 
-restart-VM -VM $VM -Confirm:$False | Wait-Tools
+restart-VM -VM $VM -Confirm:$False | Wait-Tools -ErrorAction 
 
 # ----- Timed out waiting for tools in my envionment
 Start-Sleep -Seconds 120

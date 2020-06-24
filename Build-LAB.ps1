@@ -3,13 +3,12 @@
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account")
 #$VCenterAdmin = (Get-Credential -Message "vCenter Account" )
-#$ADRecoveryAcct = (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password")
-#$DomainAdmin = (Get-Credential -UserName "$($ConfigData.AllNodes.DomainName)\administrator" -Message "New Domain Admin Credential")
+#$DomainAdmin = Get-Credential -UserName "Kings-wood\administrator" -Message "Domain Admin"
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
-#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- Build Router
 #. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -Verbose
