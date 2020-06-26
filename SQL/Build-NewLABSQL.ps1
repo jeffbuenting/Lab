@@ -125,9 +125,27 @@ $VM = Get-VM -Name $ConfigData.AllNodes.NodeName
 $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
-# ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
-$CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
-Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+Try {
+    # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
+    $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
+    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Problem checking if the temp drive exist.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
+# ----- So it seems that the windows firewall prevents mapping.  Opening port in firewall so I can mapp and copy files
+Write-Verbose "enabling firewall rules for file share."
+Try {
+    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Enable-NetFirewallRule -Name FPS-ICMP4-ERQ-In,FPS-SMB-In-TCP" -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error enabling firewall rules.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 
 # ----- Remove the drive if it exists
@@ -217,24 +235,24 @@ write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
 
 $OU = $ConfigData.AllNodes.OU
 
-Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
-    $VerbosePreference = $Using:VerbosePreference
-    $SQLSVC = $Using:SQLSvcAccount
+#Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+#    $VerbosePreference = $Using:VerbosePreference
+#    $SQLSVC = $Using:SQLSvcAccount
+#
+#    $U = Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Ignore
+#
+#    if ( $U ) {
+#        Write-Verbose "$($SQLSvc.Username) already exists"
+#    }
+#    Else {
+#        Write-Verbose "Creating $($SQLSvc.Username)"
+#
+#        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
+#    }
+#
+#}
 
-    $U = Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Ignore
-
-    if ( $U ) {
-        Write-Verbose "$($SQLSvc.Username) already exists"
-    }
-    Else {
-        Write-Verbose "Creating $($SQLSvc.Username)"
-
-        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
-    }
-
-}
-
-restart-VM -VM $VM -Confirm:$False | Wait-Tools -ErrorAction 
+restart-VM -VM $VM -Confirm:$False | Wait-Tools
 
 # ----- Timed out waiting for tools in my envionment
 Start-Sleep -Seconds 120

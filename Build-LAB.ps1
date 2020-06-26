@@ -7,8 +7,8 @@
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- Build Router
 #. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -Verbose
