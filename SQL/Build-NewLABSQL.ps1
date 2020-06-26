@@ -19,7 +19,9 @@ Param (
 
     [PSCredential]$SAAccount,
 
-    [String]$DSCModulePath
+    [String]$DSCModulePath,
+
+    [int]$Timeout = '900'
 )
 
 
@@ -73,8 +75,33 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
 
     Try {
         # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-        Write-Output "Creating VM"
-        $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -ErrorAction Stop
+        Write-Verbose "Creating VM"
+        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec $ConfigData.AllNodes.OSCustomization -ErrorAction Stop -RunAsync
+    
+        Write-Verbose "waiting for new-vm to complete"
+
+        Write-Verbose "Task State = $($Task.State )"
+        while ( $Task.state -ne 'Success' ) {
+            Start-Sleep -Seconds 60
+
+            Write-Verbose "Still waiting for new-vm to complete"
+
+            $Task = Get-Task -Id $Task.Id -Verbose:$False
+            Write-Verbose "Task State = $($Task.State)"
+        }
+
+
+        write-verbose "VM done"
+        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Build-NewLABSQL : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
+
+    Try {
 
         # ----- Attach the VM to the portgroup
         Write-verbose "Attaching NIC to correct network"
@@ -83,12 +110,15 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Write-Verbose "Modifying CPU and memory"
         Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -confirm:$False
      
-        Write-Output "Starting VM"
-        Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+        Write-Verbose "Starting VM and wait for VM Tools to start."
+        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
-        # ----- and because we don't have a DHCP server on this network we need to apply an IP
-        $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
-        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
+        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+
+        Write-Verbose "Getting VM INfo"
+        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
+        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
         # ----- Sometimes the VM hostname and IPAddress to be correct does not get filled in.  Waiting for a bit and trying again.
         $Timeout = 5
@@ -107,13 +137,20 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
             Write-Verbose "Trys = $Trys"
         } while ( ( -Not $VM.Guest.HostName ) -and ( $VM.Guest.IPAddress[0] -notmatch '\d{1,3].\d{1,3].\d{1,3].\d{1,3]}') -and ($Trys -lt $Timeout ) )
 
-        if ( $Trys -eq $Timeout ) { Throw "Build-NewLABDomain : TimeOut getting VM info" }
+        if ( $Trys -eq $Timeout ) { Throw "Build-NewLABSQL : TimeOut getting VM info" }
 
+        # ----- and because we don't have a DHCP server on this network we need to apply an IP
+        $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
+        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
+
+        # ----- Set DNS
+        $DNS = "c:\windows\system32\netsh.exe interface ip set dns name=""Ethernet0"" static $($ConfigData.AllNodes.DNSServer)"
+        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
     }
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABDomain : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Build-NewLABSQL : Error Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 }
 Else {
@@ -219,7 +256,7 @@ Catch {
 
 # ----- Mount the SQL ISO
  Try {   
-    Write-Verbose "Mounting WINPE" 
+    Write-Verbose "Mounting SQL ISO" 
 
     Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $Configdata.AllNodes.SQLISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
 }
@@ -235,24 +272,26 @@ write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
 
 $OU = $ConfigData.AllNodes.OU
 
-#Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
-#    $VerbosePreference = $Using:VerbosePreference
-#    $SQLSVC = $Using:SQLSvcAccount
-#
-#    $U = Get-ADUser -Identity $SQLSvc.UserName -ErrorAction Ignore
-#
-#    if ( $U ) {
-#        Write-Verbose "$($SQLSvc.Username) already exists"
-#    }
-#    Else {
-#        Write-Verbose "Creating $($SQLSvc.Username)"
-#
-#        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
-#    }
-#
-#}
+Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+    $VerbosePreference = $Using:VerbosePreference
+    $SQLSVC = $Using:SQLSvcAccount
 
-restart-VM -VM $VM -Confirm:$False | Wait-Tools
+    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
+
+    Write-Verbose "User = $($U | out-string )"
+
+    if ( $U ) {
+        Write-Verbose "$($SQLSvc.Username) already exists"
+    }
+    Else {
+        Write-Verbose "Creating $($SQLSvc.Username)"
+
+        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
+    }
+
+}
+
+#restart-VM -VM $VM -Confirm:$False | Wait-Tools
 
 # ----- Timed out waiting for tools in my envionment
 Start-Sleep -Seconds 120

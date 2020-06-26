@@ -45,35 +45,70 @@ Catch {
     Throw "Build-NewLABRouter : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-Try {
-    # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-    Write-Verbose "Creating VM"
-    $VM = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -ErrorAction Stop
+if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue ) ) {
 
-    # ----- Attach the VM to the portgroup
-    Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.ExternalSwitch -Name $ConfigData.AllNodes.ExternalPortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop 
-    New-NetworkAdapter -vm $VM -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -StartConnected -ErrorAction Stop
+     Try {
+        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+        Write-Verbose "Creating VM"
+        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec $ConfigData.AllNodes.OSCustomization -ErrorAction Stop -RunAsync
     
-    Set-VM -VM $VM -NumCpu 2 -MemoryGB 2
+        Write-Verbose "waiting for new-vm to complete"
 
-    Write-Verbose "Starting VM"
-    Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+        Write-Verbose "Task State = $($Task.State )"
+        while ( $Task.state -ne 'Success' ) {
+            Start-Sleep -Seconds 60
 
-    # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+            Write-Verbose "Still waiting for new-vm to complete"
 
-    # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
-    while ( -Not $VM.Guest.HostName ) {
-        Write-Verbose "Pausing 15 Seconds..."
-        Sleep -Seconds 15
+            $Task = Get-Task -Id $Task.Id -Verbose:$False
+            Write-Verbose "Task State = $($Task.State)"
+        }
 
+
+        write-verbose "VM done"
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
+
+    Try {
+
+
+        # ----- Attach the VM to the portgroup
+        Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.ExternalSwitch -Name $ConfigData.AllNodes.ExternalPortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop 
+        New-NetworkAdapter -vm $VM -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -StartConnected -ErrorAction Stop
+    
+        Set-VM -VM $VM -NumCpu 2 -MemoryGB 2
+
+        Write-Verbose "Starting VM"
+        Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+
+        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+
+        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
+        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
+        # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
+        while ( -Not $VM.Guest.HostName ) {
+            Write-Verbose "Pausing 15 Seconds..."
+            Sleep -Seconds 15
+
+            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+        }
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 }
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+Else {
+    Write-Verbose "VM already exists.  Continuing to configuration"
 }
 
 $IPAddress = $VM.Guest.IpAddress[0]
