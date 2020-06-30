@@ -91,6 +91,14 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Write-Verbose "Starting VM"
         Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
+        # ----- Seems to be an issue where the Wait-Tools completes but the VM is still not powered on.  But only for this vm.
+        Write-Verbose "Pausing for VM to Poweron..."
+        while ( $VM.PowerState -ne 'PoweredOn' ) {
+            Write-Verbose "Powerstate = $($VM.PowerState)"
+            start-sleep -Seconds 5
+            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+        }
+
         Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
