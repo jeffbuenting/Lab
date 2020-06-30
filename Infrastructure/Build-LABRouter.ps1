@@ -2,7 +2,12 @@
 Param (
     [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
 
-    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" )
+    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+
+    [int]$Timeout = '900',
+
+    [Parameter (Mandatory=$True)]
+    [String]$DSCModulePath
 
 #    [PSCredential]$ADRecoveryAcct = (Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"),
 
@@ -64,7 +69,6 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
             Write-Verbose "Task State = $($Task.State)"
         }
 
-
         write-verbose "VM done"
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
@@ -80,15 +84,19 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
 
         # ----- Attach the VM to the portgroup
         Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.ExternalSwitch -Name $ConfigData.AllNodes.ExternalPortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop 
-        New-NetworkAdapter -vm $VM -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -StartConnected -ErrorAction Stop
-    
-        Set-VM -VM $VM -NumCpu 2 -MemoryGB 2
+        New-NetworkAdapter -vm $VM -Type Vmxnet3 -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -StartConnected -ErrorAction Stop
+
+        Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -Confirm:$False
 
         Write-Verbose "Starting VM"
         Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
 
         Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+
+         # ----- Set DNS
+        $DNS = "c:\windows\system32\netsh.exe interface ip set dns name=""Ethernet0"" static $($ConfigData.AllNodes.DNSServer)"
+        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
 
         # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
@@ -111,12 +119,29 @@ Else {
     Write-Verbose "VM already exists.  Continuing to configuration"
 }
 
+if ( $VM.PowerState -ne 'PoweredOn' ) { 
+    Write-Verbose "Starting VM..."
+    Start-VM -VM $VM | Wait-Tools 
+}
+
 $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
 $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+
+# ----- SI decided for now to keep the firewall off.  But this is where you would configure the rules
+Write-Verbose "DISabling firewall."
+Try {
+    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled False -Verbose" -ErrorAction Stop
+    #Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Enable-NetFirewallRule -Name FPS-ICMP4-ERQ-In,FPS-SMB-In-TCP" -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error enabling firewall rules.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 # ----- Remove the drive if it exists
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
@@ -153,12 +178,14 @@ Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destinat
 
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
-Write-Verbose "Copy DSC Resources"
-copy-item -path C:\Users\600990\Documents\WindowsPowerShell\Modules\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path C:\users\600990\Documents\WindowsPowerShell\Modules\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Write-Verbose "Copy DSC Resources from $DSCModulePath"
+copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-Item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 
 
 # ----- Run Config MOF on computer
+Write-Verbose "Final DSC COnfig"
+
 $DSCSuccess = $False
 $Trys = 0
 Do {
@@ -177,7 +204,7 @@ Do {
 
         Write-Verbose "Retrying ..."
     }
-} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
+} While ( (-Not $DSCSuccess) -and ($Trys -lt 5) )
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive

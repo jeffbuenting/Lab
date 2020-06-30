@@ -12,6 +12,7 @@ $ConfigData = @{
             PortGroup = 'LAB - 10.10.10.x' 
             ExternalIPAddress = '192.168.1.10/24'
             ExternalDefaultGateway = '192.168.1.1' 
+            ExternalDNSServer = '192.168.1.1'
             ExternalSwitch = 'VSwitch0'   
             ExternalPortGroup = '192.168.1.x'
             RetryCount = 20              

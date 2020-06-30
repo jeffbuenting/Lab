@@ -10,8 +10,12 @@
 $DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 #$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
+# ----- VMWare module is not in a ps path so loading manually
+Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
+
+
 # ----- Build Router
-. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -Verbose
+. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -DSCModulePath $DSCModulePath -Verbose
 
 # ----- Build AD
 #. $PSScriptRoot\Domain\Build-newLABDomain.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -ADRecoveryAcct $ADRecoveryAcct -DomainAdmin $DomainAdmin -DSCModulePath $DSCModulePath -Verbose
