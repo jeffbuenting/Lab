@@ -102,9 +102,31 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
-         # ----- Set DNS
-        $DNS = "c:\windows\system32\netsh.exe interface ip set dns name=""Ethernet0"" static $($ConfigData.AllNodes.DNSServer)"
-        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
+         # ----- Sometimes the VM is not quite ready for the invoke-vmscript so loop until successfull
+         $Success = $False
+
+         WHile ( -Not $Success ) {
+            Try {
+         
+                # ----- Set DNS
+                Write-Verbose "Setting DNS"
+
+                $DNS = "c:\windows\system32\netsh.exe interface ip set dnsservers name=""Ethernet0"" static $($ConfigData.AllNodes.DNSServer)"
+                Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
+                $Success = $True
+            }
+            Catch {
+                $ExceptionMessage = $_.Exception.Message
+                $ExceptionType = $_.Exception.GetType().Fullname
+                Write-Warning "Build-NewLABRouter : Problem connecting to VM to set DNS.  Pausing and then trying again`n`n     $ExceptionMessage`n`n $ExceptionType"
+                $Success = $False
+
+                Write-Verbose "Pausing for 60 seconds"
+                Start-sleep -seconds 60
+            }
+
+        }
+
 
         # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
@@ -136,10 +158,10 @@ $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
 # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
-$CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Directory -Path ""\\$IPAddress\c$\temp"" }"
+$CMD = "if ( -Not (Test-Path 'c:\temp') ) { New-Item -ItemType Directory -Path 'c:\temp' }"
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
-# ----- SI decided for now to keep the firewall off.  But this is where you would configure the rules
+# ----- So decided for now to keep the firewall off.  But this is where you would configure the rules
 Write-Verbose "DISabling firewall."
 Try {
     Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled False -Verbose" -ErrorAction Stop
@@ -152,6 +174,7 @@ Catch {
 }
 
 # ----- Remove the drive if it exists
+Write-Verbose "mapping drive to copy resources"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin
 
