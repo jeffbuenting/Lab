@@ -144,7 +144,7 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
 
         # ----- Set DNS
-        $DNS = "c:\windows\system32\netsh.exe interface ip set dns name=""Ethernet0"" static $($ConfigData.AllNodes.ExternalDNSServer)"
+        $DNS = "c:\windows\system32\netsh.exe interface ipv4 set dns name=""Ethernet0"" static $($ConfigData.AllNodes.ExternalDNSServer)"
         Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
     }
     Catch {
@@ -307,7 +307,7 @@ Do {
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
         $DSCSuccess = $True
     }
     Catch {

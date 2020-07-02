@@ -39,17 +39,17 @@ configuration New-LABSQL
             Ensure = 'Present'
         }
 
-  #      SqlSetup 'InstallDefaultInstance'
-  #      {
-  #          InstanceName        = 'MSSQLSERVER'
-  #          Features            = 'SQLENGINE'
-  #          SourcePath          = 'R:\'
-  #          SQLSysAdminAccounts = @('Administrators')
-  #          SQLSvcAccount       = $SQLSvcAccount
-  #          SecurityMode        = 'SQL'
-  #          SAPwd               = $SAAccount
-  #          DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
-  #      }
+        SqlSetup 'InstallDefaultInstance'
+        {
+            InstanceName        = 'MSSQLSERVER'
+            Features            = 'SQLENGINE'
+            SourcePath          = 'R:\'
+            SQLSysAdminAccounts = @('Administrators')
+            SQLSvcAccount       = $SQLSvcAccount
+            SecurityMode        = 'SQL'
+            SAPwd               = $SAAccount
+            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+        }
     }
 
 }
