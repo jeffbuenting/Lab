@@ -35,6 +35,12 @@ configuration New-LABRouter
             AddressFamily  = 'IPv4'
         }
 
+        DNSServerAddress DNSE0 {
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily = 'IPv4'
+            Address = $Node.ExternalDNSServer
+        }
+
         NetIPInterface DisableDhcpE1
         {
             InterfaceAlias = 'Ethernet1'
@@ -50,12 +56,12 @@ configuration New-LABRouter
             AddressFamily  = 'IPV4'
         }
 
-        DefaultGatewayAddress SetDefaultGatewayE1
-        {
-            Address        = $Node.DefaultGateway
-            InterfaceAlias = 'Ethernet1'
-            AddressFamily  = 'IPv4'
-        }
+   #     DefaultGatewayAddress SetDefaultGatewayE1
+   #     {
+   #         Address        = $Node.DefaultGateway
+   #         InterfaceAlias = 'Ethernet1'
+   #         AddressFamily  = 'IPv4'
+   #     }
 
         xComputer SetName { 
             Name = $Node.NodeName 

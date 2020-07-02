@@ -102,30 +102,39 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
+ #       Write-Verbose "Waiting for VM to settle down..."
+ #       Wait-Tools -VM $VM 
+
+
+
+
+
          # ----- Sometimes the VM is not quite ready for the invoke-vmscript so loop until successfull
-         $Success = $False
-
-         WHile ( -Not $Success ) {
-            Try {
-         
-                # ----- Set DNS
-                Write-Verbose "Setting DNS"
-
-                $DNS = "c:\windows\system32\netsh.exe interface ip set dnsservers name=""Ethernet0"" static $($ConfigData.AllNodes.DNSServer)"
-                Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
-                $Success = $True
-            }
-            Catch {
-                $ExceptionMessage = $_.Exception.Message
-                $ExceptionType = $_.Exception.GetType().Fullname
-                Write-Warning "Build-NewLABRouter : Problem connecting to VM to set DNS.  Pausing and then trying again`n`n     $ExceptionMessage`n`n $ExceptionType"
-                $Success = $False
-
-                Write-Verbose "Pausing for 60 seconds"
-                Start-sleep -seconds 60
-            }
-
-        }
+#         $Success = $False
+#
+#         WHile ( -Not $Success ) {
+#            Try {
+#                Write-Verbose "Pausing for 120 seconds"
+#                Start-sleep -seconds 120
+#
+#
+#                # ----- Set DNS
+#                Write-Verbose "Setting DNS"
+#
+#                $DNS = "c:\windows\system32\netsh.exe interface ipv4 set dnsservers name=""Ethernet0"" source=static address=$($ConfigData.AllNodes.DNSServer) register=primary"
+#                Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
+##                $Success = $True
+#            }
+#            Catch {
+#                $ExceptionMessage = $_.Exception.Message
+#                $ExceptionType = $_.Exception.GetType().Fullname
+#                Throw "Build-NewLABRouter : Problem connecting to VM to set DNS.  Pausing and then trying again`n`n     $ExceptionMessage`n`n $ExceptionType"
+##                $Success = $False
+##
+##               
+#            }
+#
+#        }
 
 
         # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
@@ -149,6 +158,8 @@ Else {
     Write-Verbose "VM already exists.  Continuing to configuration"
 }
 
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName 
+
 if ( $VM.PowerState -ne 'PoweredOn' ) { 
     Write-Verbose "Starting VM..."
     Start-VM -VM $VM | Wait-Tools 
@@ -157,9 +168,32 @@ if ( $VM.PowerState -ne 'PoweredOn' ) {
 $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
-# ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
-$CMD = "if ( -Not (Test-Path 'c:\temp') ) { New-Item -ItemType Directory -Path 'c:\temp' }"
-Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+# ----- Sometimes the VM is not quite ready for the invoke-vmscript so loop until successfull
+$Success = $False
+
+WHile ( -Not $Success ) {
+    Try {
+        Write-Verbose "Pausing for 120 seconds"
+        Start-sleep -seconds 120
+
+        # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
+        $CMD = "if ( -Not (Test-Path 'c:\temp') ) { New-Item -ItemType Directory -Path 'c:\temp' }"
+        # ----- problems waiting for taks to finish in this case and there are multiple instances running.  using wait task
+        $Task = Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD -RunAsync -ErrorAction Stop
+        Wait-Task -Task $Task
+
+
+        $Success = $True
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Write-Warning "Build-NewLABRouter : Problem connecting to VM to check temp dir.  Pausing and then trying again`n`n     $ExceptionMessage`n`n $ExceptionType"
+        $Success = $False
+               
+    }
+
+}
 
 # ----- So decided for now to keep the firewall off.  But this is where you would configure the rules
 Write-Verbose "DISabling firewall."
@@ -176,7 +210,7 @@ Catch {
 # ----- Remove the drive if it exists
 Write-Verbose "mapping drive to copy resources"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
-New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin
+New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction Stop
 
 # ----- Copy LCM Config and run on remote system
 Write-Verbose "Configuring LCM"
@@ -224,7 +258,8 @@ Do {
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
+        $DSCSuccess = $True
     }
     Catch {
         Write-Warning "Problem running DSC.  Pausing and then will retry"
