@@ -266,30 +266,30 @@ Catch {
     Throw "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
 }
 
-# ----- Create SQL Account on AD
-# ----- create accounts for SQL
-write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
-
-$OU = $ConfigData.AllNodes.OU
-
-Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
-    $VerbosePreference = $Using:VerbosePreference
-    $SQLSVC = $Using:SQLSvcAccount
-
-    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
-
-    Write-Verbose "User = $($U | out-string )"
-
-    if ( $U ) {
-        Write-Verbose "$($SQLSvc.Username) already exists"
-    }
-    Else {
-        Write-Verbose "Creating $($SQLSvc.Username)"
-
-        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
-    }
-
-}
+## ----- Create SQL Account on AD
+## ----- create accounts for SQL
+#write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
+#
+#$OU = $ConfigData.AllNodes.OU
+#
+#Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+#    $VerbosePreference = $Using:VerbosePreference
+#    $SQLSVC = $Using:SQLSvcAccount
+#
+#    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
+#
+#    Write-Verbose "User = $($U | out-string )"
+#
+#    if ( $U ) {
+#        Write-Verbose "$($SQLSvc.Username) already exists"
+#    }
+#    Else {
+#        Write-Verbose "Creating $($SQLSvc.Username)"
+#
+#        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
+#    }
+#
+#}
 
 #restart-VM -VM $VM -Confirm:$False | Wait-Tools
 

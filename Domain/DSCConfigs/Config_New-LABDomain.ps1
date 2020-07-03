@@ -3,7 +3,8 @@ $ConfigData = @{
     AllNodes = @(             
         @{             
             Nodename = "KW-DC1"             
-            Role = "Primary DC"             
+            Role = "Primary DC"       
+            OSCustomization = 'WIN 2016 Sysprep'      
             DomainName = 'kings-wood.local'
             IPAddress = '10.10.10.10'
             SubnetMask = '255.255.255.0'

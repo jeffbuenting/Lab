@@ -102,41 +102,6 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
 
- #       Write-Verbose "Waiting for VM to settle down..."
- #       Wait-Tools -VM $VM 
-
-
-
-
-
-         # ----- Sometimes the VM is not quite ready for the invoke-vmscript so loop until successfull
-#         $Success = $False
-#
-#         WHile ( -Not $Success ) {
-#            Try {
-#                Write-Verbose "Pausing for 120 seconds"
-#                Start-sleep -seconds 120
-#
-#
-#                # ----- Set DNS
-#                Write-Verbose "Setting DNS"
-#
-#                $DNS = "c:\windows\system32\netsh.exe interface ipv4 set dnsservers name=""Ethernet0"" source=static address=$($ConfigData.AllNodes.DNSServer) register=primary"
-#                Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
-##                $Success = $True
-#            }
-#            Catch {
-#                $ExceptionMessage = $_.Exception.Message
-#                $ExceptionType = $_.Exception.GetType().Fullname
-#                Throw "Build-NewLABRouter : Problem connecting to VM to set DNS.  Pausing and then trying again`n`n     $ExceptionMessage`n`n $ExceptionType"
-##                $Success = $False
-##
-##               
-#            }
-#
-#        }
-
-
         # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
