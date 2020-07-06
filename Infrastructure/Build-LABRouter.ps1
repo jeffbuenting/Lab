@@ -28,7 +28,7 @@ Write-Verbose "Dot sourcing scripts"
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
 try {
-    LCMConfig -OutputPath C:\Scripts\Lab\MOF -ErrorAction Stop
+    LCMConfig -OutputPath $PSScriptRoot\MOF -ErrorAction Stop
 
     New-LABRouter -ConfigurationData $ConfigData `
         -OutputPath $PSScriptRoot\MOF `
@@ -143,10 +143,9 @@ WHile ( -Not $Success ) {
 
         # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
         $CMD = "if ( -Not (Test-Path 'c:\temp') ) { New-Item -ItemType Directory -Path 'c:\temp' }"
-        # ----- problems waiting for taks to finish in this case and there are multiple instances running.  using wait task
+        # ----- problems waiting for tasks to finish in this case and there are multiple instances running.  using wait task
         $Task = Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD -RunAsync -ErrorAction Stop
-        Wait-Task -Task $Task
-
+        Wait-Task -Task $Task -ErrorAction Stop
 
         $Success = $True
     }
@@ -211,7 +210,8 @@ Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destinat
 Write-Verbose "Copy DSC Resources from $DSCModulePath"
 copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 Copy-Item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-
+Copy-Item -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-Item -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
 
 # ----- Run Config MOF on computer
 Write-Verbose "Final DSC COnfig"

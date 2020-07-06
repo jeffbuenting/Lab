@@ -14,6 +14,7 @@ configuration New-LABDomain
     Import-DscResource -ModuleName xActiveDirectory 
     Import-DscResource -ModuleName xComputerManagement  
 #    Import-DSCResource -moduleName NetworkingDSC
+    Import-DSCResource -ModuleName xDNSServer
 
     Node $AllNodes.Where{$_.Role -eq "Primary DC"}.Nodename             
     { 
@@ -75,7 +76,13 @@ configuration New-LABDomain
             DatabasePath = 'C:\NTDS'            
             LogPath = 'C:\NTDS'            
             DependsOn = "[WindowsFeature]ADDSInstall","[File]ADFiles"            
-        }            
+        } 
+        
+        xDnsServerForwarder DNSForwarder {
+            IsSingleInstance = 'Yes'
+            IPAddresses = $Node.DNSForwarder
+            DependsOn = '[xADDomain]FirstDS'
+        }          
     }
 
 }

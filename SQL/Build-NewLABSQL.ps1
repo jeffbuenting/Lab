@@ -144,6 +144,7 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
         Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
 
         # ----- Set DNS
+        Write-Verbose "DNS -------------------------------------"
         $DNS = "c:\windows\system32\netsh.exe interface ipv4 set dns name=""Ethernet0"" static $($ConfigData.AllNodes.ExternalDNSServer)"
         Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
     }
@@ -247,6 +248,11 @@ Try {
     copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     copy-item -path $DSCModulePath\sqlserverdsc -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     copy-item -path $DSCModulePath\ccdromdriveletter -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    copy-item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    copy-item -path $DSCModulePath\xWindowsUpdate -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    copy-item -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+
+    copy-item -path "$($ConfigData.AllNodes.source)\ssms-setup-enu.exe" -Destination "RemoteDrive:\Temp" -ErrorAction Stop -force
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message

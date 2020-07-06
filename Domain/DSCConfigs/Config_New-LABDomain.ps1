@@ -17,7 +17,8 @@ $ConfigData = @{
             PSDscAllowDomainUser = $True
             PsDscAllowPlainTextPassword = $true 
             VMTemplate = "WIN2016Template" 
-            ESXHost = '192.168.1.15'          
+            ESXHost = '192.168.1.15'  
+            DNSForwarder = '192.168.1.1'        
         }            
     )             
 }  

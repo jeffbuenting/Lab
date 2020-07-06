@@ -17,14 +17,37 @@ configuration New-LABSQL
     Import-DscResource -ModuleName xComputerManagement
     Import-DSCResource -ModuleName SqlServerDsc  
     Import-DSCResource -ModuleName ccdromdriveletter
+    Import-DSCResource -moduleName NetworkingDSC
+    Import-DSCResource -ModuleName xWindowsUpdate
+    Import-DSCResource -ModuleName xTimeZone
 
     Node $AllNodes.Where{$_.Role -eq "SQL"}.Nodename             
     { 
+
+         DNSServerAddress DNSE0 {
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily = 'IPv4'
+            Address = $Node.DNSServer
+        }
+
+        xTimeZone EST {
+            IsSingleInstance = 'Yes'
+            TimeZone = 'Eastern Standard Time'
+        }
 
         xComputer SetName { 
             Name = $Node.NodeName 
             DomainName = $Node.DomainName
             Credential = $DomainCred
+            DependsOn = "[DNSServerAddress]DNSE0"
+        }
+
+        xWindowsUpdateAgent Updates {
+            IsSingleInstance = 'Yes'
+            Source = 'MicrosoftUpdate'
+            Category = 'Security'
+            UpdateNow = $True
+            DependsOn = '[xComputer]SetName'
         }
 
         WindowsFeature 'NetFramework45'
@@ -39,16 +62,26 @@ configuration New-LABSQL
             Ensure = 'Present'
         }
 
-        SqlSetup 'InstallDefaultInstance'
-        {
-            InstanceName        = 'MSSQLSERVER'
-            Features            = 'SQLENGINE'
-            SourcePath          = 'R:\'
-            SQLSysAdminAccounts = @('Administrators')
-            SQLSvcAccount       = $SQLSvcAccount
-            SecurityMode        = 'SQL'
-            SAPwd               = $SAAccount
-            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+#        SqlSetup 'InstallDefaultInstance'
+#        {
+#            InstanceName        = 'MSSQLSERVER'
+#            Features            = 'SQLENGINE'
+#            SourcePath          = 'R:\'
+#            SQLSysAdminAccounts = @('Administrators')
+#            SQLSvcAccount       = $SQLSvcAccount
+#            SecurityMode        = 'SQL'
+#            SAPwd               = $SAAccount
+#            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+#        }
+
+        Package SSMS {
+             Name = 'SSMS'
+             Path = "C:\temp\SSMS-Setup-ENU.exe"
+             ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
+             Arguments = "/Quiet SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
+             PsDscRunAsCredential = $DomainCred
+             DependsOn = '[xWindowsUpdateAgent]Updates'
+ #           DependsON = '[SqlSetup]InstallDefaultInstance'
         }
     }
 

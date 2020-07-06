@@ -9,6 +9,8 @@ configuration New-LABRouter
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
+    Import-DscResource -ModuleName xSystemSecurity
+    Import-DSCResource -ModuleName xTimeZone
 
     Node $AllNodes.Where{$_.Role -eq "Router"}.Nodename             
     { 
@@ -67,18 +69,24 @@ configuration New-LABRouter
             Name = $Node.NodeName 
         }
 
+        xTimeZone EST {
+            IsSingleInstance = 'Yes'
+            TimeZone = 'Eastern Standard Time'
+        }
+
+        xIEEsc IESec {
+            UserRole = 'Administrators'
+            IsEnabled = $False
+        }
+
+        # ----- Routing setup and configure
         WindowsFeature Routing
         {
             Ensure = "Present"
             Name = "Routing"
         }
 
-   #     # ----- NOt sure why this gets added but it is not needed
-   #     WindowsFeature DirectAccessVPN
-   #     {
-   #         Ensure = "Absent"
-   #         Name = "DirectAccess-VPN"
-   #     }
+
 
         WindowsFeature RSAT-Tools
         {
@@ -90,24 +98,24 @@ configuration New-LABRouter
         # ----- We need to configure RRAS.  Simple cmdlet to complete.  wrapping in script resource
         # https://docs.microsoft.com/en-us/powershell/scripting/dsc/reference/resources/windows/scriptresource?view=powershell-7
         # https://docs.microsoft.com/en-us/powershell/module/remoteaccess/install-remoteaccess?view=win10-ps
-        Script ConfigRouting {
-            GetScript = { @{ Result = (Get-RemoteAccess) } }
-            
-            TestScript = {
-                $RRAS = Get-RemoteAccess
-                
-                if ( $RRAS.RoutingStatus -eq 'Installed' ) {
-                    $True
-                }
-                Else {
-                    $False
-                }
-            }
-            
-            SetScript = { Install-RemoteAccess -VpnType RoutingOnly }
-
-            DependsOn = "[WindowsFeature]Routing"
-
-        }
+ #       Script ConfigRouting {
+ #           GetScript = { @{ Result = (Get-RemoteAccess) } }
+ #           
+ #           TestScript = {
+ #               $RRAS = Get-RemoteAccess
+ #               
+ #               if ( $RRAS.RoutingStatus -eq 'Installed' ) {
+ #                   $True
+ #               }
+ #               Else {
+ #                   $False
+ #               }
+ #           }
+ #           
+ #           SetScript = { Install-RemoteAccess -VpnType RoutingOnly }
+ #
+ #           DependsOn = "[WindowsFeature]Routing"
+ #
+ #       }
     }
 }

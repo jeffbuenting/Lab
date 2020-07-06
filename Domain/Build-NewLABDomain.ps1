@@ -157,7 +157,12 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
     }
 
 }
+Else {
+    Write-Verbose "VM Exist.  Configuring ..."
+}
   
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+
 $IPAddress = $VM.Guest.IpAddress[0]
 
 Write-Verbose "Checking if Temp directory exists"
@@ -227,6 +232,7 @@ Try {
     Write-Output "Copy DSC Resources"
     copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     Copy-Item -path $DSCModulePath\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    Copy-Item -path $DSCModulePath\xDNSServer -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -234,13 +240,13 @@ Catch {
     Throw "Build-NewLABDomain : Error Copying DSC Resources.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-# ----- restarting VM to make sure all services are running
-#Get-Service -ComputerName $IPAddress
-
-restart-VM -VM $VM -Confirm:$False | Wait-Tools
+## ----- restarting VM to make sure all services are running
+##Get-Service -ComputerName $IPAddress
+#
+#restart-VM -VM $VM -Confirm:$False | Wait-Tools
 
 # ----- Timed out waiting for tools in my envionment
-Start-Sleep -Seconds 120
+#Start-Sleep -Seconds 120
 
 
 # ----- Run Config MOF on computer
@@ -251,7 +257,7 @@ Do {
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
-        $Result = Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
+        Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD 
         $DSCSuccess = $True
     }
     Catch {
