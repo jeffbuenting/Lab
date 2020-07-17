@@ -24,6 +24,27 @@ configuration New-LABSQL
     Node $AllNodes.Where{$_.Role -eq "SQL"}.Nodename             
     { 
 
+        NetIPInterface DisableDhcpE0
+        {
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily  = 'IPv4'
+            Dhcp           = 'Disabled'
+        }
+
+        IPAddress NewIPv4AddressE0
+        {
+            IPAddress      = $Node.IPAddress
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily  = 'IPV4'
+        }
+
+        DefaultGatewayAddress SetDefaultGatewayE0
+        {
+            Address        = $Node.DefaultGateway
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily  = 'IPv4'
+        }
+
          DNSServerAddress DNSE0 {
             InterfaceAlias = 'Ethernet0'
             AddressFamily = 'IPv4'
@@ -62,17 +83,17 @@ configuration New-LABSQL
             Ensure = 'Present'
         }
 
-#        SqlSetup 'InstallDefaultInstance'
-#        {
-#            InstanceName        = 'MSSQLSERVER'
-#            Features            = 'SQLENGINE'
-#            SourcePath          = 'R:\'
-#            SQLSysAdminAccounts = @('Administrators')
-#            SQLSvcAccount       = $SQLSvcAccount
-#            SecurityMode        = 'SQL'
-#            SAPwd               = $SAAccount
-#            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
-#        }
+        SqlSetup 'InstallDefaultInstance'
+        {
+            InstanceName        = 'MSSQLSERVER'
+            Features            = 'SQLENGINE'
+            SourcePath          = 'R:\'
+            SQLSysAdminAccounts = @('Administrators')
+            SQLSvcAccount       = $SQLSvcAccount
+            SecurityMode        = 'SQL'
+            SAPwd               = $SAAccount
+            DependsOn           = '[xWindowsUpdateAgent]Updates','[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+        }
 
         Package SSMS {
              Name = 'SSMS'
@@ -80,8 +101,8 @@ configuration New-LABSQL
              ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
              Arguments = "/Quiet SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
              PsDscRunAsCredential = $DomainCred
-             DependsOn = '[xWindowsUpdateAgent]Updates'
- #           DependsON = '[SqlSetup]InstallDefaultInstance'
+  #           DependsOn = '[xWindowsUpdateAgent]Updates'
+            DependsON = '[SqlSetup]InstallDefaultInstance'
         }
     }
 

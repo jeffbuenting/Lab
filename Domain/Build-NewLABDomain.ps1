@@ -79,7 +79,7 @@ if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyCont
     Try {
         # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
         Write-Verbose "Creating VM"
-        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec $ConfigData.AllNodes.OSCustomization -ErrorAction Stop -RunAsync
+        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -Location $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec $ConfigData.AllNodes.OSCustomization -ErrorAction Stop -RunAsync
         
         Write-Verbose "waiting for new-vm to complete"
 
@@ -171,13 +171,24 @@ $CMD = "if ( -Not (Test-Path ""\\$IPAddress\c$\temp"") ) { New-Item -ItemType Di
 Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $CMD
 
 
+# ----- So it seems that the windows firewall prevents mapping.  Opening port in firewall so I can mapp and copy files
+Write-Verbose "enabling firewall rules for file share."
+Try {
+    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Enable-NetFirewallRule -Name FPS-ICMP4-ERQ-In,FPS-SMB-In-TCP" -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : Error enabling firewall rules.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
 # ----- Remove the drive if it exists
 Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
     #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($VM.Guest.HostName)\c$" -Credential $LocalAdmin -ErrorAction Stop
-    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction Stop
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -233,6 +244,7 @@ Try {
     copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     Copy-Item -path $DSCModulePath\xActiveDirectory -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
     Copy-Item -path $DSCModulePath\xDNSServer -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    Copy-Item -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message

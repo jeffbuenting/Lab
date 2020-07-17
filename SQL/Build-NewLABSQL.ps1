@@ -17,6 +17,8 @@ Param (
 
     [PSCredential]$SQLSvcAccount,
 
+    [PSCredential]$LocalAdmin,
+
     [PSCredential]$SAAccount,
 
     [String]$DSCModulePath,
@@ -71,92 +73,22 @@ Catch {
 }
 
 # ----- Build new VM if one does not already exist
-if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue ) ) {
-
-    Try {
-        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-        Write-Verbose "Creating VM"
-        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec $ConfigData.AllNodes.OSCustomization -ErrorAction Stop -RunAsync
-    
-        Write-Verbose "waiting for new-vm to complete"
-
-        Write-Verbose "Task State = $($Task.State )"
-        while ( $Task.state -ne 'Success' ) {
-            Start-Sleep -Seconds 60
-
-            Write-Verbose "Still waiting for new-vm to complete"
-
-            $Task = Get-Task -Id $Task.Id -Verbose:$False
-            Write-Verbose "Task State = $($Task.State)"
-        }
 
 
-        write-verbose "VM done"
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
+        -ESXHost $ConfigData.AllNodes.ESXHost `
+        -Template $ConfigData.AllNodes.VMTemplate `
+        -ResourcePool $ConfigData.AllNodes.ResourcePool `
+        -OSCustomization $ConfigData.AllNodes.OSCustomization `
+        -VMSwitch $ConfigData.AllNodes.Switch `
+        -PortGroup $ConfigData.AllNodes.Portgroup `
+        -LocalAdmin $LocalAdmin `
+        -CPU 4 `
+        -Memory 4 `
+        -Timeout $Timeout `
+        -ErrorAction Stop `
+        -Verbose
 
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABSQL : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-
-    Try {
-
-        # ----- Attach the VM to the portgroup
-        Write-verbose "Attaching NIC to correct network"
-        Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
-
-        Write-Verbose "Modifying CPU and memory"
-        Set-VM -VM $VM -NumCpu 2 -MemoryGB 2 -confirm:$False
-     
-        Write-Verbose "Starting VM and wait for VM Tools to start."
-        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
-
-        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
-
-        Write-Verbose "Getting VM INfo"
-        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-        # ----- Sometimes the VM hostname and IPAddress to be correct does not get filled in.  Waiting for a bit and trying again.
-        $Timeout = 5
-
-        $Trys = 0
-        Do  {
-            Write-Verbose "Pausing ..."
-            Sleep -Seconds 30
-
-            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-            $Trys++
-
-            Write-Verbose "HostName = $($VM.Guest.HostName)"
-            Write-Verbose "IP = $($VM.Guest.IPAddress)"
-            Write-Verbose "Trys = $Trys"
-        } while ( ( -Not $VM.Guest.HostName ) -and ( $VM.Guest.IPAddress[0] -notmatch '\d{1,3].\d{1,3].\d{1,3].\d{1,3]}') -and ($Trys -lt $Timeout ) )
-
-        if ( $Trys -eq $Timeout ) { Throw "Build-NewLABSQL : TimeOut getting VM info" }
-
-        # ----- and because we don't have a DHCP server on this network we need to apply an IP
-        $netsh = “c:\windows\system32\netsh.exe interface ip set address name=""Ethernet0"" static $($ConfigData.AllNodes.IPAddress) $($ConfigData.AllNodes.SubnetMask) $($ConfigData.AllNodes.DefaultGateway)"
-        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $netsh -ErrorAction Stop
-
-        # ----- Set DNS
-        Write-Verbose "DNS -------------------------------------"
-        $DNS = "c:\windows\system32\netsh.exe interface ipv4 set dns name=""Ethernet0"" static $($ConfigData.AllNodes.ExternalDNSServer)"
-        Invoke-VMScript –VM $VM  -GuestCredential $LocalAdmin -ScriptType bat -ScriptText $DNS -ErrorAction Stop
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABSQL : Error Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-}
-Else {
-    Write-Verbose "VM already exists.  Continuing to configuration"
-}
   
 $VM = Get-VM -Name $ConfigData.AllNodes.NodeName
 
@@ -191,7 +123,7 @@ Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
 if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
-    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($Configdata.AllNodes.IPAddress)\c$" -Credential $LocalAdmin -ErrorAction Stop
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction Stop
     #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
 }
 Catch {
@@ -236,7 +168,7 @@ Do {
 Try {
     Write-Output "Copying DSC resources to VM"
     Write-Output "Copy MOFs"
-    Copy-Item -Path "$PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof" -Destination RemoteDrive:\temp\localhost.mof -ErrorAction Stop
+    Copy-Item -Path "$PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof" -Destination RemoteDrive:\temp\localhost.mof -ErrorAction Stop -Force
 #    COpy-Item -Path "$PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).meta.mof" -Destination RemoteDrive:\temp\localhost.meta.mof
 
 
@@ -245,19 +177,19 @@ Try {
 
     # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
     Write-Output "Copy DSC Resources"
-    copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
-    copy-item -path $DSCModulePath\sqlserverdsc -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
-    copy-item -path $DSCModulePath\ccdromdriveletter -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
-    copy-item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
-    copy-item -path $DSCModulePath\xWindowsUpdate -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
-    copy-item -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop -force
+    Copy-ItemIfNotThere -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
+    Copy-ItemIfNotThere -path $DSCModulePath\sqlserverdsc -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
+    Copy-ItemIfNotThere -path $DSCModulePath\ccdromdriveletter -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
+    Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
+    Copy-ItemIfNotThere -path $DSCModulePath\xWindowsUpdate -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
+    Copy-ItemIfNotThere -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
 
-    copy-item -path "$($ConfigData.AllNodes.source)\ssms-setup-enu.exe" -Destination "RemoteDrive:\Temp" -ErrorAction Stop -force
+    Copy-ItemIfNotThere -path "$($ConfigData.AllNodes.source)\ssms-setup-enu.exe" -Destination "RemoteDrive:\Temp" -ErrorAction Stop
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABDomain : Error Copying DSC Resources.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    Throw "Build-NewLABSQL : Error Copying DSC Resources.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
 # ----- Mount the SQL ISO
@@ -272,30 +204,30 @@ Catch {
     Throw "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
 }
 
-## ----- Create SQL Account on AD
-## ----- create accounts for SQL
-#write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
-#
-#$OU = $ConfigData.AllNodes.OU
-#
-#Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
-#    $VerbosePreference = $Using:VerbosePreference
-#    $SQLSVC = $Using:SQLSvcAccount
-#
-#    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
-#
-#    Write-Verbose "User = $($U | out-string )"
-#
-#    if ( $U ) {
-#        Write-Verbose "$($SQLSvc.Username) already exists"
-#    }
-#    Else {
-#        Write-Verbose "Creating $($SQLSvc.Username)"
-#
-#        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
-#    }
-#
-#}
+# ----- Create SQL Account on AD
+# ----- create accounts for SQL
+write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
+
+$OU = $ConfigData.AllNodes.OU
+
+Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+    $VerbosePreference = $Using:VerbosePreference
+    $SQLSVC = $Using:SQLSvcAccount
+
+    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
+
+    Write-Verbose "User = $($U | out-string )"
+
+    if ( $U ) {
+        Write-Verbose "$($SQLSvc.Username) already exists"
+    }
+    Else {
+        Write-Verbose "Creating $($SQLSvc.Username)"
+
+        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
+    }
+
+}
 
 #restart-VM -VM $VM -Confirm:$False | Wait-Tools
 

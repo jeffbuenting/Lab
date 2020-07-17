@@ -15,6 +15,7 @@ configuration New-LABDomain
     Import-DscResource -ModuleName xComputerManagement  
 #    Import-DSCResource -moduleName NetworkingDSC
     Import-DSCResource -ModuleName xDNSServer
+    Import-DSCResource -ModuleName xTimeZone
 
     Node $AllNodes.Where{$_.Role -eq "Primary DC"}.Nodename             
     { 
@@ -45,6 +46,10 @@ configuration New-LABDomain
             Name = $Node.NodeName 
         }
 
+        xTimeZone EST {
+            IsSingleInstance = 'Yes'
+            TimeZone = 'Eastern Standard Time'
+        }
         
 
         File ADFiles            
