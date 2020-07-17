@@ -12,7 +12,7 @@
     )
 
     Try {
-        Write-Verbose "Copy if the file does not exist"
+        Write-Verbose "Copy if the file does not exist.  File/Folder = $Path to Dest = $Destination"
 
         # ----- extract file/folder name
         $Name = (Get-Item -Path $Path).Name
