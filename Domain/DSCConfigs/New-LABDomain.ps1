@@ -87,7 +87,16 @@ configuration New-LABDomain
             IsSingleInstance = 'Yes'
             IPAddresses = $Node.DNSForwarder
             DependsOn = '[xADDomain]FirstDS'
-        }          
+        }       
+        
+        # ----- Create AD Structure / accounts 
+        xADOrganizationalUnit ServiceAcctOU {
+            Name                            = ServiceAcctOU
+            Path                            = "dc=kings-wood,dc=local"
+            ProtectedFromAccidentalDeletion = $True
+            Description                     = 'Contains Service Accounts'
+            Ensure                          = 'Present'
+        }   
     }
 
 }
