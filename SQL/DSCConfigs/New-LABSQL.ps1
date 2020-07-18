@@ -19,6 +19,7 @@ configuration New-LABSQL
     Import-DSCResource -ModuleName ccdromdriveletter
     Import-DSCResource -moduleName NetworkingDSC
     Import-DSCResource -ModuleName xWindowsUpdate
+    Import-DscResource -ModuleName xSystemSecurity
     Import-DSCResource -ModuleName xTimeZone
 
     Node $AllNodes.Where{$_.Role -eq "SQL"}.Nodename             
@@ -54,6 +55,11 @@ configuration New-LABSQL
         xTimeZone EST {
             IsSingleInstance = 'Yes'
             TimeZone = 'Eastern Standard Time'
+        }
+
+        xIEEsc IESec {
+            UserRole = 'Administrators'
+            IsEnabled = $False
         }
 
         xComputer SetName { 

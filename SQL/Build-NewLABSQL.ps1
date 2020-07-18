@@ -183,8 +183,12 @@ Try {
     Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
     Copy-ItemIfNotThere -path $DSCModulePath\xWindowsUpdate -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
     Copy-ItemIfNotThere -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
+    Copy-ItemIfNotThere -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
 
+    # ----- Remove the drive if it exists
     Copy-ItemIfNotThere -path "$($ConfigData.AllNodes.source)\ssms-setup-enu.exe" -Destination "RemoteDrive:\Temp" -ErrorAction Stop
+
+
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -204,30 +208,32 @@ Catch {
     Throw "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
 }
 
-# ----- Create SQL Account on AD
-# ----- create accounts for SQL
-write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
-
-$OU = $ConfigData.AllNodes.OU
-
-Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
-    $VerbosePreference = $Using:VerbosePreference
-    $SQLSVC = $Using:SQLSvcAccount
-
-    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
-
-    Write-Verbose "User = $($U | out-string )"
-
-    if ( $U ) {
-        Write-Verbose "$($SQLSvc.Username) already exists"
-    }
-    Else {
-        Write-Verbose "Creating $($SQLSvc.Username)"
-
-        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
-    }
-
-}
+## ----- Create SQL Account on AD
+## ----- create accounts for SQL
+#Write-Verbose "Checking AD for Accounts"
+#
+#write-Verbose "DomainName = $($ConfigData.AllNodes.DomainName)"
+#
+#$OU = $ConfigData.AllNodes.OU
+#
+#Invoke-Command -ComputerName $ConfigData.AllNodes.DomainName -Credential $DomainAdmin -ScriptBlock {
+#    $VerbosePreference = $Using:VerbosePreference
+#    $SQLSVC = $Using:SQLSvcAccount
+#
+#    $U = Get-ADUser -Identity ($SQLSvc.UserName.split('\\'))[1] -ErrorAction Ignore
+#
+#    Write-Verbose "User = $($U | out-string )"
+#
+#    if ( $U ) {
+#        Write-Verbose "$($SQLSvc.Username) already exists"
+#    }
+#    Else {
+#        Write-Verbose "Creating $($SQLSvc.Username)"
+#
+#        New-ADUser -Name ($SQLSvc.UserName.Split('\\'))[1] -Path $Using:OU -AccountPassword $SQLSvc.Password -Enabled $true
+#    }
+#
+#}
 
 #restart-VM -VM $VM -Confirm:$False | Wait-Tools
 

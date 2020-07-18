@@ -22,7 +22,7 @@ $ConfigData = @{
             SQLISO = '[LocalHDD] ISO/SQL/SQLServer2019-x64-ENU.iso' 
             Source = '\\192.168.1.166\Source'
             #OU = 'cn=Managed Service Accounts,dc=kings-wood,dc=local'
-            OU =  'cn=Userskw,dc=kings-wood,dc=local'
+            OU =  'OU=ServiceAcct,dc=kings-wood,dc=local'
         }            
     )             
 }  

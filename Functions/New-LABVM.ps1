@@ -177,16 +177,32 @@
 
         $VM = Get-VM -Name $VMName 
 
+        $Reboot = $False
+
         Try {
  
             # ----- Attach the VM to the portgroup
-            Write-verbose "Attaching NIC to correct network"
-            Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $VMSwitch -Name $PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
- 
+            $VMNIC = Get-NetworkAdapter -VM $VM -ErrorAction Stop
 
-            
-            Write-Verbose "Modifying CPU and memory"
-            Set-VM -VM $VM -NumCpu $CPU -MemoryGB $Memory -confirm:$False
+            if ( $VMNIC.NetworkName -ne $PortGroup ) {
+                Write-verbose "Attaching NIC to correct network"
+
+                Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $VMSwitch -Name $PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+                $Reboot = $True
+            }
+            Else {
+                Write-Verbose "NIC already attached to $PortGroup"
+            }
+
+            if ( ($VM.NUMCPU -ne $CPU) -or ($VM.MemoryGB -ne $Memory) ) {
+                Write-Verbose "Modifying CPU and memory"
+
+                Set-VM -VM $VM -NumCpu $CPU -MemoryGB $Memory -confirm:$False
+                $Reboot = $True
+            }
+            Else {
+                Write-Verbose "CPU and Memory set correctly"
+            }
      
             if ( $VM.PowerState -eq 'PoweredOff') {
                 Write-Verbose "Starting VM and wait for VM Tools to start."
@@ -198,9 +214,14 @@
                 Wait-Tools -VM $VM
             }
             Else {
-                Write-Verbose "Restarting VM"
+                if ( $Reboot ) {
+                    Write-Verbose "Restarting VM"
 
-                Restart-VM -VM $VM -Confirm:$False | Wait-Tools
+                    Restart-VM -VM $VM -Confirm:$False | Wait-Tools
+                }
+                Else {
+                    Write-Verbose "Restart not needed"
+                }
             }
  
             Write-Verbose "Getting VM INfo"
