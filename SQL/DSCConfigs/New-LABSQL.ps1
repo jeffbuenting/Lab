@@ -89,31 +89,60 @@ configuration New-LABSQL
             Ensure = 'Present'
         }
 
-        SqlSetup 'InstallDefaultInstance'
-        {
-            InstanceName        = 'MSSQLSERVER'
-            Features            = 'SQLENGINE'
-            SourcePath          = 'R:\'
-            SQLSysAdminAccounts = @('Administrators')
-            SQLSvcAccount       = $SQLSvcAccount
-            SecurityMode        = 'SQL'
-            SAPwd               = $SAAccount
-            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
-        }
-
-        Package SSMS {
-             Name = 'SSMS'
-             Path = "C:\temp\SSMS-Setup-ENU.exe"
-             ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
-             Arguments = "/Quiet /log 'c:\temp\ssmssetup.log' SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
-             PsDscRunAsCredential = $DomainCred
-  #           DependsOn = '[xWindowsUpdateAgent]Updates'
-            DependsON = '[SqlSetup]InstallDefaultInstance'
-        }
-    }
-
-}
-           
-            
- 
-
+ #       SqlSetup 'InstallDefaultInstance'
+ #       {
+ #           InstanceName        = 'MSSQLSERVER'
+ #           Features            = 'SQLENGINE'
+ #           SourcePath          = 'R:\'
+ #           SQLSysAdminAccounts = @('Administrators')
+ #           SQLSvcAccount       = $SQLSvcAccount
+ #           SecurityMode        = 'SQL'
+ #           SAPwd               = $SAAccount
+ #           DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+ #       }
+ #
+ #       # ----- Because the SQL services time out starting.  Setting to autoretry 
+ #       Script SQLDBEngineAutoRestart {
+ #           GetScript = { @{ Result = (& SC.exe query mssqlserver) } }
+ #           
+ #           TestScript = {
+ #               # ----- always false so always run setting
+ #               $False
+ #           }
+ #           
+ #           SetScript = { & SC.exe failure mssqlserver actions= restart/60000/restart/60000/""/60000 reset= 86400 }
+ #
+ #           DependsOn = "[SqlSetup]InstallDefaultInstance"
+ #
+ #       }
+ #
+ #       Service SQLDBEngineStart {
+ #           Name        = 'mssqlserver'
+ #           State       = 'Running'
+ #           DependsOn   = '[Script]SQLDBEngineAutoRestart'
+ #       }
+ #
+ #       Service SQLDBEngineStart {
+ #           Name        = 'sqltelemetry'
+ #           State       = 'Running'
+ #           DependsOn   = '[Script]SQLDBEngineAutoRestart'
+ #       }
+ #
+ #       Package SSMS {
+ #            Name = 'SSMS'
+ #            Path = "C:\temp\SSMS-Setup-ENU.exe"
+ #            ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
+ # #           Arguments = "/Quiet /log 'c:\temp\ssmssetup.log' SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
+ #            Arguments = "/Quiet /log c:\temp\ssmssetup"
+ #            PsDscRunAsCredential = $DomainCred
+ # #           DependsOn = '[xWindowsUpdateAgent]Updates'
+ #           DependsON = '[Service]SQLDBEngineStart'
+ #       }
+ #   }
+ #
+}#
+ #          
+ #           
+ #
+ #
+ #
