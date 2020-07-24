@@ -14,6 +14,8 @@ configuration New-LABDomain
     Import-DscResource -ModuleName xActiveDirectory 
     Import-DscResource -ModuleName xComputerManagement  
 #    Import-DSCResource -moduleName NetworkingDSC
+    Import-DSCResource -ModuleName xDNSServer
+    Import-DSCResource -ModuleName xTimeZone
 
     Node $AllNodes.Where{$_.Role -eq "Primary DC"}.Nodename             
     { 
@@ -44,6 +46,10 @@ configuration New-LABDomain
             Name = $Node.NodeName 
         }
 
+        xTimeZone EST {
+            IsSingleInstance = 'Yes'
+            TimeZone = 'Eastern Standard Time'
+        }
         
 
         File ADFiles            
@@ -75,7 +81,22 @@ configuration New-LABDomain
             DatabasePath = 'C:\NTDS'            
             LogPath = 'C:\NTDS'            
             DependsOn = "[WindowsFeature]ADDSInstall","[File]ADFiles"            
-        }            
+        } 
+        
+        xDnsServerForwarder DNSForwarder {
+            IsSingleInstance = 'Yes'
+            IPAddresses = $Node.DNSForwarder
+            DependsOn = '[xADDomain]FirstDS'
+        }       
+        
+        # ----- Create AD Structure / accounts 
+        xADOrganizationalUnit ServiceAcctOU {
+            Name                            = ServiceAcctOU
+            Path                            = "dc=kings-wood,dc=local"
+            ProtectedFromAccidentalDeletion = $True
+            Description                     = 'Contains Service Accounts'
+            Ensure                          = 'Present'
+        }   
     }
 
 }
