@@ -9,8 +9,8 @@
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
-#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force

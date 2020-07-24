@@ -263,6 +263,10 @@ Do {
     }
 } While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
 
+Write-verbose "wait and then reboot"
+Start-Sleep -Seconds 900
+
+Restart-VM -VM $VM -Confirm:$False
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
