@@ -185,6 +185,9 @@ Try {
     Copy-ItemIfNotThere -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
     Copy-ItemIfNotThere -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
 
+    # ----- Copy required powershell module
+    Copy-ItemIfNotThere -path $DSCModulePath\sqlserver -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
+
     # ----- Remove the drive if it exists
     Copy-ItemIfNotThere -path "$($ConfigData.AllNodes.source)\ssms-setup-enu.exe" -Destination "RemoteDrive:\Temp" -ErrorAction Stop
 
