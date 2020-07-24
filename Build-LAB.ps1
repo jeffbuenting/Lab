@@ -9,8 +9,8 @@
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
@@ -33,4 +33,12 @@ Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
 
 # ----- Build SQL
 # (Wait-OSCustomization is really slow on my lab increased the timeout from default to account for this)
-. $PSScriptRoot\SQL\Build-NewLABSQL.ps1 -VCenterAdmin $VcenterAdmin -DomainAdmin $DomainAdmin -LocalAdmin $LocalAdmin -SQLSvcAccount $SQLSvcAccount -SAAccount $SAAccount -DSCModulePath $DSCModulePath -Timeout 3600 -Verbose
+#. $PSScriptRoot\SQL\Build-NewLABSQL.ps1 -VCenterAdmin $VcenterAdmin -DomainAdmin $DomainAdmin -LocalAdmin $LocalAdmin -SQLSvcAccount $SQLSvcAccount -SAAccount $SAAccount -DSCModulePath $DSCModulePath -Timeout 3600 -Verbose
+
+
+# ------------------------------------------------------------------------------
+# VDI Section
+# ------------------------------------------------------------------------------
+
+# ----- Connection View server
+. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -Timeout 1200 -Verbose

@@ -80,96 +80,32 @@ Catch {
     Throw "Build-NewLABDomain : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-# ----- Connect to vCenter service so we can deal with the VM
-Try {
-    Connect-VIServer -Server $ConfigData.AllNodes.VCSA -Credential $VCenterAdmin -ErrorAction Stop
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABRouter : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
 
-# ----- Only do this if the VM does not exist.  This allows us to rerun this script if there is an error and pick up where it left off
-
-if ( -Not (Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue) ) {
-    Write-Verbose "VM does not exist, Creating"
 
     Try {
         # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-        Write-Verbose "Creating VM"
-        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
-    
-        Write-Verbose "waiting for new-vm to complete"
 
-        Write-Verbose "Task State = $($Task.State )"
-        while ( $Task.state -ne 'Success' ) {
-            Start-Sleep -Seconds 60
+        New-LABVM -VMName $ConfigData.AllNodes.NodeName `
+            -ESXHost $ConfigData.AllNodes.ESXHost `
+            -Template $ConfigData.AllNodes.VMTemplate `
+            -ResourcePool $ConfigData.AllNodes.ResourcePool `
+            -OSCustomization $ConfigData.AllNodes.OSCustomization `
+            -VMSwitch $ConfigData.AllNodes.Switch `
+            -PortGroup $ConfigData.AllNodes.Portgroup `
+            -LocalAdmin $LocalAdmin `
+            -CPU 4 `
+            -Memory 4 `
+            -Timeout $Timeout `
+            -ErrorAction Stop `
+            -Verbose
 
-            Write-Verbose "Still waiting for new-vm to complete"
 
-            $Task = Get-Task -Id $Task.Id -Verbose:$False
-            Write-Verbose "Task State = $($Task.State)"
-        }
-
-
-        write-verbose "VM done"
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
     }
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-
-    Try {
-
-        # ----- Attach the VM to the portgroup
-        Write-verbose "Attaching NIC to correct network"
-        $VMNIC = Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' 
-        Write-Verbose "NIC = $($VMNIC | Out-String)"
-    
-        $PG = (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction SilentlyContinue)
-        Write-Verbose "PG = $($PG | Out-String)"
-
-        $VMNIC | Set-NetworkAdapter -Portgroup $PG -Confirm:$False -ErrorAction SilentlyContinue
-
-
-        #$VMNic = Get-NetworkAdapter -vm $VM -ErrorAction Stop 
-        #if ( $VMNIC.NetworkName -ne $ConfigData.AllNodes.PortGroup ) {
-        #    $VMNIC | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
-        #}
-
-        Write-Verbose "Setting CPU and Memory"
-        Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
-
-        Write-Verbose "Starting VM and wait for VM Tools to start."
-        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
-
-
-
-        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
-
-
-        Write-Verbose "Getting VM INfo"
-        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-        # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
-        while ( -Not $VM.Guest.HostName ) {
-            Write-Verbose "Pausing 15 Seconds..."
-            Sleep -Seconds 15
-
-            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-        }
-
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     Write-verbose "Waiting for VM to start"
@@ -191,10 +127,6 @@ if ( -Not (Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyConti
         $T += 5
     }
 
-}
-Else {
-    Write-Verbose "VM Exists running config"
-}
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 $VM.Guest
@@ -274,27 +206,18 @@ Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destinat
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
 Write-Verbose "Copy DSC Resources"
-copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-ItemIfNotThere -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
 
 # ----- Source install files
 Write-Verbose "install source"
-copy-item -path $Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe -Destination "RemoteDrive:\Temp" -Recurse -force
-
-
-# ----- Because I can't get DSC to set the DNS server I am doing before the config runs
-Write-Verbose "Set Interface DNS "
-$CMD = "import-module DNSClient; Set-DnsClientServerAddress -InterfaceIndex (Get-NetAdapter -Name Ethernet0).interfaceindex -ServerAddresses ($($Configdata.AllNodes.DNSServer -join ','))"
-Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+Copy-ItemIfNotThere -path $Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe -Destination "RemoteDrive:\Temp" -Recurse
 
 # ----- Run Config MOF on computer
 Write-Verbose "Final DSC MOF"
 
-#$DSCSuccess = $False
-#$Trys = 0
-#Do {
-#    Try {
+
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
@@ -306,17 +229,7 @@ Write-Verbose "Final DSC MOF"
 
         $DSCSuccess = $True
 
-#    }
-#    Catch {
-#        Write-Warning "Problem running DSC.  Pausing and then will retry"
-#        $DSCSuccess = $False
-#        $Trys++
-#
-#
-#
-#        Write-Verbose "Retrying ..."
-#    }
-#} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
+
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 

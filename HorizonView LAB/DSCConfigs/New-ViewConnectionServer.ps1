@@ -14,39 +14,46 @@ configuration New-ViewConnectionServer
     { 
 
 
-        NetIPInterface DisableDhcpE1
+         NetIPInterface DisableDhcpE0
         {
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPv4'
             Dhcp           = 'Disabled'
         }
 
-
-        IPAddress NewIPv4AddressE1
+        IPAddress NewIPv4AddressE0
         {
             IPAddress      = $Node.IPAddress
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPV4'
+            DependsOn = "[NetIPInterface]DisableDhcpE0"
         }
 
-        DefaultGatewayAddress SetDefaultGatewayE1
+        DefaultGatewayAddress SetDefaultGatewayE0
         {
             Address        = $Node.DefaultGateway
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPv4'
+            DependsOn = "[IPAddress]NewIPv4AddressE0"
         }
 
-    # ----- DNS is set via powershell prior to running DSC because this does not seem to work.
-    #    DnsServerAddress DNSE1
-    #    {
-    #        #Address        = $Node.DNSServer
-    #        Address        = @(
-    #            '10.10.10.10'
-    #        )
-    #        InterfaceAlias = 'Ethernet0'
-    #        AddressFamily  = 'IPv4'
-    #        Validate       = $true
-    #    }
+         DNSServerAddress DNSE0 {
+            InterfaceAlias = 'Ethernet0'
+            AddressFamily = 'IPv4'
+            Address = $Node.DNSServer
+            DependsOn = "[DefaultGatewayAddress]SetDefaultGatewayE0"
+        }
+
+        xTimeZone EST {
+            IsSingleInstance = 'Yes'
+            TimeZone = 'Eastern Standard Time'
+        }
+
+        xIEEsc IESec {
+            UserRole = 'Administrators'
+            IsEnabled = $False
+        }
+
 
         xComputer SetName { 
             Name = $Node.NodeName 
