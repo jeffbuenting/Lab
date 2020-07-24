@@ -106,7 +106,7 @@ configuration New-LABSQL
             DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
         }
 
-        script SQLDBEnginAutoDelayed {
+        script SQLDBEngineAutoDelayed {
             GetScript = { 
                 @{ Result = { Get-CIMInstance -Classname WIN32_Service -Filter "Name = 'msqlserver'" } }
             }
@@ -127,31 +127,31 @@ configuration New-LABSQL
                 & SC.exe Config mssqlserver Start= Delayed-Auto
             }
   
-            DependsOn = "[SqlSetup]InstallDefaultInstance"
+    #        DependsOn = "[SqlSetup]InstallDefaultInstance"
         }
  
-        # ----- Because the SQL services time out starting.  Setting to autoretry 
-        Script SQLDBEngineAutoRestart {
-            GetScript = { @{ Result = (& SC.exe query mssqlserver) } }
-            
-            TestScript = {
-                # ----- always false so always run setting
-                $False
-            }
-            
-            SetScript = { & SC.exe failure mssqlserver actions= restart/60000/restart/60000/""/60000 reset= 86400 }
- 
-            DependsOn = "[SqlSetup]InstallDefaultInstance"
- 
-        }
- 
-  #      Service SQLDBEngineStart {
-  #          Name        = 'mssqlserver'
-  #          State       = 'Running'
-  #          DependsOn   = '[Script]SQLDBEngineAutoRestart'
-  #      }
+ #       # ----- Because the SQL services time out starting.  Setting to autoretry 
+ #       Script SQLDBEngineAutoRestart {
+ #           GetScript = { @{ Result = (& SC.exe query mssqlserver) } }
+ #           
+ #           TestScript = {
+ #               # ----- always false so always run setting
+ #               $False
+ #           }
+ #           
+ #           SetScript = { & SC.exe failure mssqlserver actions= restart/60000/restart/60000/""/60000 reset= 86400 }
+ #
+ #           DependsOn = "[SqlSetup]InstallDefaultInstance"
+ #
+ #       }
  
         Service SQLDBEngineStart {
+            Name        = 'mssqlserver'
+            State       = 'Running'
+            DependsOn = "[script]SQLDBEngineAutoDelayed"
+        }
+ 
+        Service SQLTelemetryDisabled {
             Name        = 'sqltelemetry'
             StartUpType = 'Disabled'
             State       = 'Stopped'
