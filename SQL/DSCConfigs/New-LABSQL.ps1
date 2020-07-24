@@ -151,22 +151,23 @@ configuration New-LABSQL
  #           DependsOn   = '[Script]SQLDBEngineAutoRestart'
  #       }
  #
- #       Service SQLDBEngineStart {
- #           Name        = 'sqltelemetry'
- #           State       = 'Running'
- #           DependsOn   = '[Script]SQLDBEngineAutoRestart'
- #       }
- #
- #       Package SSMS {
- #            Name = 'SSMS'
- #            Path = "C:\temp\SSMS-Setup-ENU.exe"
- #            ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
- # #           Arguments = "/Quiet /log 'c:\temp\ssmssetup.log' SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
- #            Arguments = "/Quiet /log c:\temp\ssmssetup"
- #            PsDscRunAsCredential = $DomainCred
- # #           DependsOn = '[xWindowsUpdateAgent]Updates'
- #           DependsON = '[Service]SQLDBEngineStart'
- #       }
+        Service SQLDBEngineStart {
+            Name        = 'sqltelemetry'
+            StartUpType = 'Disabled'
+            State       = 'Stopped'
+            DependsOn = "[SqlSetup]InstallDefaultInstance"
+        }
+ 
+        Package SSMS {
+             Name = 'SSMS'
+             Path = "C:\temp\SSMS-Setup-ENU.exe"
+             ProductId = '83660798-3DA3-4197-B48A-D2F6FC52CCF5'
+  #           Arguments = "/Quiet /log 'c:\temp\ssmssetup.log' SSMSInstallRoot='c:\Program Files(x86)\Microsoft SQL Server Management Studio 18'"
+             Arguments = "/Quiet /log c:\temp\ssmssetup"
+             PsDscRunAsCredential = $DomainCred
+  #           DependsOn = '[xWindowsUpdateAgent]Updates'
+            DependsOn = "[SqlSetup]InstallDefaultInstance"
+        }
     }
  
 }
