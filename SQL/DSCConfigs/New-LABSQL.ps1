@@ -130,20 +130,20 @@ configuration New-LABSQL
     #        DependsOn = "[SqlSetup]InstallDefaultInstance"
         }
  
- #       # ----- Because the SQL services time out starting.  Setting to autoretry 
- #       Script SQLDBEngineAutoRestart {
- #           GetScript = { @{ Result = (& SC.exe query mssqlserver) } }
- #           
- #           TestScript = {
- #               # ----- always false so always run setting
- #               $False
- #           }
- #           
- #           SetScript = { & SC.exe failure mssqlserver actions= restart/60000/restart/60000/""/60000 reset= 86400 }
- #
- #           DependsOn = "[SqlSetup]InstallDefaultInstance"
- #
- #       }
+        # ----- Because the SQL services time out starting.  Setting to autoretry 
+        Script SQLDBEngineAutoRestart {
+            GetScript = { @{ Result = (& SC.exe query mssqlserver) } }
+            
+            TestScript = {
+                # ----- always false so always run setting
+                $False
+            }
+            
+            SetScript = { & SC.exe failure mssqlserver actions= restart/60000/restart/60000/""/60000 reset= 86400 }
+ 
+            DependsOn = "[SqlSetup]InstallDefaultInstance"
+ 
+        }
  
         Service SQLDBEngineStart {
             Name        = 'mssqlserver'
