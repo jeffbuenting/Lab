@@ -37,6 +37,7 @@ configuration New-LABSQL
             IPAddress      = $Node.IPAddress
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPV4'
+            DependsOn = "[NetIPInterface]DisableDhcpE0"
         }
 
         DefaultGatewayAddress SetDefaultGatewayE0
@@ -44,12 +45,14 @@ configuration New-LABSQL
             Address        = $Node.DefaultGateway
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPv4'
+            DependsOn = "[IPAddress]NewIPv4AddressE0"
         }
 
          DNSServerAddress DNSE0 {
             InterfaceAlias = 'Ethernet0'
             AddressFamily = 'IPv4'
             Address = $Node.DNSServer
+            DependsOn = "[DefaultGatewayAddress]SetDefaultGatewayE0"
         }
 
         xTimeZone EST {
@@ -66,7 +69,7 @@ configuration New-LABSQL
             Name = $Node.NodeName 
             DomainName = $Node.DomainName
             Credential = $DomainCred
-            DependsOn = "[DNSServerAddress]DNSE0"
+            DependsOn = "[DNSServerAddress]DNSE0","[xTimeZone]EST"
         }
 
   #      xWindowsUpdateAgent Updates {
@@ -81,25 +84,51 @@ configuration New-LABSQL
         {
              Name = 'Net-Framework-45-Core'
              Ensure = 'Present'
+             DependsOn = "[xComputer]SetName"
         }
 
         ccdromdriveletter CDROMDrive
         {
             DriveLetter = 'R'
             Ensure = 'Present'
+            DependsOn = "[xComputer]SetName"
         }
 
- #       SqlSetup 'InstallDefaultInstance'
- #       {
- #           InstanceName        = 'MSSQLSERVER'
- #           Features            = 'SQLENGINE'
- #           SourcePath          = 'R:\'
- #           SQLSysAdminAccounts = @('Administrators')
- #           SQLSvcAccount       = $SQLSvcAccount
- #           SecurityMode        = 'SQL'
- #           SAPwd               = $SAAccount
- #           DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
- #       }
+        SqlSetup 'InstallDefaultInstance'
+        {
+            InstanceName        = 'MSSQLSERVER'
+            Features            = 'SQLENGINE'
+            SourcePath          = 'R:\'
+            SQLSysAdminAccounts = @('Administrators')
+            SQLSvcAccount       = $SQLSvcAccount
+            SecurityMode        = 'SQL'
+            SAPwd               = $SAAccount
+            DependsOn           = '[WindowsFeature]NetFramework45','[ccdromdriveletter]CDROMDrive'
+        }
+
+        script SQLDBEnginAutoDelayed {
+            GetScript = { 
+                @{ Result = { Get-CIMInstance -Classname WIN32_Service -Filter "Name = 'msqlserver'" } }
+            }
+  
+            TestScript = {
+                $Service = Get-CIMInstance -Classname WIN32_Service -Filter "Name = 'mssqlserver'"
+  
+                if ( ($Service.StartMode -eq 'Auto') -and ($Service.DelayedAutoStart) ) {
+                    $True
+                }
+                Else {
+                    $False
+             
+                } 
+            }
+  
+            SetScript = {
+                & SC.exe Config mssqlserver Start= Delayed-Auto
+            }
+  
+            DependsOn = "[SqlSetup]InstallDefaultInstance"
+        }
  #
  #       # ----- Because the SQL services time out starting.  Setting to autoretry 
  #       Script SQLDBEngineAutoRestart {
@@ -138,11 +167,11 @@ configuration New-LABSQL
  # #           DependsOn = '[xWindowsUpdateAgent]Updates'
  #           DependsON = '[Service]SQLDBEngineStart'
  #       }
- #   }
- #
-}#
- #          
- #           
- #
- #
- #
+    }
+ 
+}
+           
+            
+ 
+ 
+ 
