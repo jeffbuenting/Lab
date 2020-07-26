@@ -237,10 +237,13 @@ $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
 
 # ----- Wait for vm to reboot
+$Timeout = 900
+$T = 0
 Write-Verbose "Waiting for VM "
-While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction SilentlyContinue ) ) {
+While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction SilentlyContinue ) -and $T -le $Timeout ) {
     Start-Sleep -s 5
-    Write-Verbose "Still Waiting"
+    Write-Verbose "Still Waiting : $T -le $Timeout"
+    $T += 5
 }
 
 
@@ -258,7 +261,7 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
-'checkOrigin=false' | Set-Content -Path "RemoteDrive:\Program Files\VMware\VMware View\Server\locked.properties"
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText "'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties -Force'"
 
 Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
 

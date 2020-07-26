@@ -18,6 +18,7 @@
             PsDscAllowPlainTextPassword = $true 
             VMTemplate = "WIN2016Template" 
             ESXHost = '192.168.1.15'    
+            Source = '\\192.168.1.166\Source'
             OU = 'OU=VMWare Service Accounts,DC=kings-wood,DC=local' 
             VCSA = '192.168.1.16' 
             VCSAViewRole = 'View Service Account'
