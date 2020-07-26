@@ -4,26 +4,28 @@
 
 [CmdletBinding()]
 Param (
-    
-    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+    [Parameter ( Mandatory = $True )]
+    [PSCredential]$VCenterAdmin,
 
-   [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
+    [Parameter ( Mandatory = $True )]
+    [PSCredential]$LocalAdmin,
 
+    [Parameter ( Mandatory = $True )]
     [PSCredential]$DomainAdmin,
 
+    [Parameter ( Mandatory = $True )]
     [PSCredential]$VCSAViewUser,
 
     [PSCredential]$InstantCloneUser,
 
     [String]$ADServer,
 
+    [Parameter ( Mandatory = $True )]
     [String]$DSCModulePath,
 
     [int]$Timeout = '900',
 
-    [String]$HVLicense,
-
-    [String]$Source = 'C:\Source\VMware'
+    [String]$HVLicense
 
 )
 
@@ -214,7 +216,7 @@ Copy-ItemIfNotThere -path $DSCModulePath\xtimezone -Destination "RemoteDrive:\Pr
 
 # ----- Source install files
 Write-Verbose "install source"
-Copy-ItemIfNotThere -path $Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe -Destination "RemoteDrive:\Temp" -Recurse
+Copy-ItemIfNotThere -path "$ConfigData.AllNodes.Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe" -Destination "RemoteDrive:\Temp" -Recurse
 
 # ----- Run Config MOF on computer
 Write-Verbose "Final DSC MOF"
@@ -249,10 +251,20 @@ While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction Sile
 
 Write-Verbose "installing VMWare Horizon View server"
 
-# ----- I broke this up as the quoting was confusing
-$Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""'
-$CMD = "& 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' $Arguments"
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+$CMD = @'
+if ( -Not ( Get-CIMInstance -Class WIN32_Product -Filter 'Name = "VMware Horizon 7 Connection Server"' ) ) {
+    & 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' /s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""
+
+    write-Output "Installed Horizon View"
+}
+Else {
+    Write-Output "Horizon View already installed"
+}
+'@
+
+$Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+
+Write-Verbose $Result.ScriptOutput
 
 # -------------------------------------------------------------------------------------
 # Configure Horizon View connection server after install
@@ -261,9 +273,23 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText "'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties -Force'"
+$CMD = @'
+if ( -Not ( Test-Path -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties' ) ) {
+    'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties -Force'
 
-Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
+    Get-service -Name wsbroker | Restart-Service
+
+    Write-Output "Creating locked.properties file and restarting Connection service"
+}
+Else {
+    Write-Output "Locked.properties file already exists."
+}
+'@
+
+$Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+
+Write-Verbose $Result.ScriptOutput
+
 
 
 ## ----- Create vCenter AD user
