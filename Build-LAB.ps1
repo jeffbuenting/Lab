@@ -1,4 +1,4 @@
-﻿
+﻿$VCenterServer = '192.168.1.16'
 
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account")
@@ -8,6 +8,9 @@
 #
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
+
+$VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 #$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 $DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
@@ -19,6 +22,23 @@ Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
 . $PSSCriptRoot\Functions\New-LABVM.ps1
 . $PSScriptRoot\Functions\Copy-ItemIfNotThere.ps1
 
+
+# ----- Connect to vCenter service so we can deal with the VM
+Try {
+    if ( $global:DefaultVIServer.Name -ne $VCenterServer -or $global:DefaultVIServer.SessionID -eq $Null ) {
+        Write-Output "Connecting to $VCenterServer"
+
+        Connect-VIServer -Server 192.168.1.16 -Credential $VCenterAdmin -ErrorAction Stop
+    }
+    Else {
+        Write-Output "Already connected to $VCenterServer"
+    }
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
 # ----- Build Router
 #. $PSScriptRoot\Infrastructure\Build-LABRouter.ps1 -LocalAdmin $LocalAdmin -VCenterAdmin $VCenterAdmin -DSCModulePath $DSCModulePath -Verbose
@@ -41,4 +61,4 @@ Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
 # ------------------------------------------------------------------------------
 
 # ----- Connection View server
-. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -Timeout 1200 -Verbose
+. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -Timeout 3600 -Verbose

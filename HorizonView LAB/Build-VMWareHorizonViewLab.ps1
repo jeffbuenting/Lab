@@ -4,6 +4,7 @@
 
 [CmdletBinding()]
 Param (
+    
     [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
 
    [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
@@ -42,7 +43,7 @@ if ( $VerbosePreference -eq 'Continue' ) { $IsVerbose = $True }
 #
 ## ----- OU for VDI Service Accounts
 #Write-Verbose "Create OU for Horizon View Service Accounts"
-#if ( -Not (Get-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -SearchBase "OU=VDI,DC=kings-wood,DC=local" -Filter 'Name -like "Service Accounts"') ) {
+#if ( -Not (Get-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -SearchBase "OU=VDI,DC=kings-wood,DC=local" -Filter 'Name -like "ServiceAcct"') ) {
 #    Write-Verbose "VDI OU does not exist.  Creating"
 #    New-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -Name "Service Accounts" -Path "OU=VDI,DC=kings-wood,DC=local"
 #}
@@ -58,8 +59,8 @@ Write-Verbose "Dot sourcing scripts"
 
 . $PSScriptRoot\DSCConfigs\New-ViewConnectionServer.ps1
 
-# ----- Dot source LCM config
-. $PSScriptRoot\DSCConfigs\LCMConfig.ps1
+# ----- Dot source LCM config (same for all scripts)
+. "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1"
 
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
@@ -82,50 +83,50 @@ Catch {
 
 
 
-    Try {
-        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+Try {
+    # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
 
-        New-LABVM -VMName $ConfigData.AllNodes.NodeName `
-            -ESXHost $ConfigData.AllNodes.ESXHost `
-            -Template $ConfigData.AllNodes.VMTemplate `
-            -ResourcePool $ConfigData.AllNodes.ResourcePool `
-            -OSCustomization $ConfigData.AllNodes.OSCustomization `
-            -VMSwitch $ConfigData.AllNodes.Switch `
-            -PortGroup $ConfigData.AllNodes.Portgroup `
-            -LocalAdmin $LocalAdmin `
-            -CPU 4 `
-            -Memory 4 `
-            -Timeout $Timeout `
-            -ErrorAction Stop `
-            -Verbose
+    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
+        -ESXHost $ConfigData.AllNodes.ESXHost `
+        -Template $ConfigData.AllNodes.VMTemplate `
+        -ResourcePool $ConfigData.AllNodes.ResourcePool `
+        -OSCustomization $ConfigData.AllNodes.OSCustomization `
+        -VMSwitch $ConfigData.AllNodes.Switch `
+        -PortGroup $ConfigData.AllNodes.Portgroup `
+        -LocalAdmin $LocalAdmin `
+        -CPU 4 `
+        -Memory 4 `
+        -Timeout $Timeout `
+        -ErrorAction Stop `
+        -Verbose
 
 
 
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
 
-    Write-verbose "Waiting for VM to start"
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName
+Write-verbose "Waiting for VM to start"
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName
 
-    while ( $VM.Guest.State -ne 'Running' ) {
-        Write-Verbose "Pausing 15 Seconds..."
-        Sleep -Seconds 15
+while ( $VM.Guest.State -ne 'Running' ) {
+    Write-Verbose "Pausing 15 Seconds..."
+    Sleep -Seconds 15
 
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-    }
+    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
+}
 
-    Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
-    $Seconds = 300
-    $T = 0
-    while ( $T -le $Seconds ) { 
-        Write-Verbose "Waiting for VM to 'Settle'..."
-        Start-Sleep -Seconds 5
-        $T += 5
-    }
+Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
+$Seconds = 300
+$T = 0
+while ( $T -le $Seconds ) { 
+    Write-Verbose "Waiting for VM to 'Settle'...$T -le $Seconds"
+    Start-Sleep -Seconds 5
+    $T += 5
+}
 
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
@@ -209,6 +210,7 @@ Write-Verbose "Copy DSC Resources"
 Copy-ItemIfNotThere -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
 Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
 Copy-ItemIfNotThere -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\xtimezone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse
 
 # ----- Source install files
 Write-Verbose "install source"
@@ -261,19 +263,19 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
 
 
-# ----- Create vCenter AD user
-if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
-    Write-Verbose "Creating vCenter AD User for Connection Server"
+## ----- Create vCenter AD user
+#if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
+#    Write-Verbose "Creating vCenter AD User for Connection Server"
+#
+#    $VCenterAcct = New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $VCSAViewUser.UserName -Description "vCenter AD account for Connection Server" -Path $ConfigData.AllNodes.ServiceAcctsOU -AccountPassword $VCSAViewUser.Password -Enabled $True
+#}
 
-    $VCenterAcct = New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $VCSAViewUser.UserName -Description "vCenter AD account for Connection Server" -Path $ConfigData.AllNodes.ServiceAcctsOU -AccountPassword $VCSAViewUser.Password -Enabled $True
-}
-
-# ----- Create Instant Clone AD User
-if ( -Not ([bool]( Get-ADUser -Server $ADServer -Filter {SamAccountName -eq "$($InstantCloneUser.UserName)"} -Credential $DomainAdmin ) ) ) {
-    Write-Verbose "Creating Instant Clone AD User"
-
-    $ICAcct = New-ADUser -Server $ADServer -Credential $DOmainAdmin -Name $InstantCloneUser.UserName -AccountPassword $InstantCloneUser.Password -Description "Instant Clone User" -Path $ConfigData.AllNodes.ServiceAcctsOU -Enabled $True
-}
+#### ----- Create Instant Clone AD User
+###if ( -Not ([bool]( Get-ADUser -Server $ADServer -Filter {SamAccountName -eq "$($InstantCloneUser.UserName)"} -Credential $DomainAdmin ) ) ) {
+###    Write-Verbose "Creating Instant Clone AD User"
+###
+###    $ICAcct = New-ADUser -Server $ADServer -Credential $DOmainAdmin -Name $InstantCloneUser.UserName -AccountPassword $InstantCloneUser.Password -Description "Instant Clone User" -Path $ConfigData.AllNodes.ServiceAcctsOU -Enabled $True
+###}
 
 # ----- Create VCSA Role and assign vCenter User to it
 Write-Verbose "Creating VCSA Role for vCenter View user"

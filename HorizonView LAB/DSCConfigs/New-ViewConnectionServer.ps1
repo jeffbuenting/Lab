@@ -1,7 +1,7 @@
 ﻿
 configuration New-ViewConnectionServer       
 {             
-   param             
+  param             
     (                     
         [PSCredential]$DomainAdmin       
     )             
@@ -9,6 +9,8 @@ configuration New-ViewConnectionServer
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
+    Import-DSCResource -ModuleName xTimeZone
+    Import-DscResource -ModuleName xSystemSecurity
 
     Node $AllNodes.Where{$_.Role -eq "ViewConnectionServer"}.Nodename             
     { 
@@ -48,7 +50,7 @@ configuration New-ViewConnectionServer
             IsSingleInstance = 'Yes'
             TimeZone = 'Eastern Standard Time'
         }
-
+  
         xIEEsc IESec {
             UserRole = 'Administrators'
             IsEnabled = $False
@@ -73,4 +75,4 @@ configuration New-ViewConnectionServer
  #       }
 
     }
-}
+} 
