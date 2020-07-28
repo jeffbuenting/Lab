@@ -25,6 +25,7 @@ Param (
 
     [int]$Timeout = '900',
 
+    [Parameter ( Mandatory = $True )]
     [String]$HVLicense
 
 )
@@ -275,7 +276,7 @@ Write-Verbose $Result.ScriptOutput
 #https://kb.vmware.com/s/article/2144768
 $CMD = @'
 if ( -Not ( Test-Path -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties' ) ) {
-    'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties -Force'
+    'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties' -Force
 
     Get-service -Name wsbroker | Restart-Service
 
@@ -368,10 +369,11 @@ if ( (($HV.ExtensionData.VirtualCenter.VirtualCenter_List()).ServerSpec.Serverna
     $enc = [system.Text.Encoding]::UTF8
     $vcencPassword.Utf8String = $enc.GetBytes($PlainvcPassword)
 
-    $spec.ServerSpec.password = $vcencPassword
+    $VCspec.ServerSpec.password = $vcencPassword
     $VCSpec.ServerSpec.ServerType = "VIRTUAL_Center"
 
-    $HV.ExtensionData.VirtualCenter.VirtualCenter_Create($HV.ExtensionData,$VCSpec)
+    #$HV.ExtensionData.VirtualCenter.VirtualCenter_Create($HV.ExtensionData,$VCSpec)
+    $HV.ExtensionData.VirtualCenter.VirtualCenter_Create($VCSpec)
 }
 Else {
     Write-Verbose "vCenter Server already associated with View"

@@ -12,8 +12,8 @@
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
@@ -61,4 +61,7 @@ Catch {
 # ------------------------------------------------------------------------------
 
 # ----- Connection View server
-. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -Timeout 3600 -Verbose
+# ----- I don't want the license key to be in git so I put in in a file locally 
+$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
+
+. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
