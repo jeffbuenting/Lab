@@ -12,8 +12,8 @@
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force

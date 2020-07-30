@@ -13,11 +13,11 @@ $spec.storageAcceleratorData=new-object VMware.Hv.virtualcenterStorageAccelerato
 
 # vCenter Server specs
 
-$spec.ServerSpec.servername="192.168.1.16"        # Required, fqdn for the vCenter server
+$spec.ServerSpec.servername="kw-vcsa01.kings-wood.local"        # Required, fqdn for the vCenter server
 $spec.ServerSpec.port=443                                 # Required
 $spec.ServerSpec.usessl=$true                             # Required
 $spec.ServerSpec.username="administrator@vsphere.local"   # Required user@domain
-$vcpassword=read-host "vCenter User password?" -assecurestring
+$vcpassword= $VCSAViewUser.Password    #read-host "vCenter User password?" -assecurestring
 $temppw = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($vcPassword)
 $PlainvcPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($temppw)
 $vcencPassword = New-Object VMware.Hv.SecureString
@@ -52,7 +52,7 @@ $spec.StorageAcceleratorData.enabled=$false
 # Cmposer
 # most can be left empty but they need to be set otherwise you'll get a xml error
 
-$spec.ViewComposerData.viewcomposertype="STANDALONE"  # DISABLED for none, LOCAL_TO_VC for installed with the vcenter and STANDALONE for s standalone composer
+$spec.ViewComposerData.viewcomposertype="DISABLED"   #"STANDALONE"  # DISABLED for none, LOCAL_TO_VC for installed with the vcenter and STANDALONE for s standalone composer
 
 
 if ($spec.ViewComposerData.viewcomposertype -ne "DISABLED"){
