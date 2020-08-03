@@ -38,6 +38,8 @@ Catch {
 #    New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $ComposerServiceAcct.UserName -Description "ComposerService" -Path ServiceAcct -AccountPassword $ComposerServic.Password -Enabled $True
 #}
 
+
+# https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-4CF63F93-8AEC-4840-9EEF-2D60F3E6C6D1.html
 # ----- Create SQL DB for the Composer Service
 Write-Verbose "Creating DB for the COmposer Servce : $ComposerDB"
 
@@ -252,5 +254,12 @@ $DBRole = @"
 "@
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole 
+
+
+# ----- Create ODBC
+# https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-3E3CF460-1653-4D1A-AAEB-7C4BE575A054.html
+Write-Verbose "Creating ODBC Connector"
+
+Invoke-VMScript -vm $VM -GuestCredential $DomainAdminn -ScriptText "Add-OdbcDsn -Name ViewComposer -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=kw-sql','Trusted_Connection=Yes','Database=$ComposerDB') "
 
 # ----- Cleanup
