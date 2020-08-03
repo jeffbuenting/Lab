@@ -262,4 +262,11 @@ Write-Verbose "Creating ODBC Connector"
 
 Invoke-VMScript -vm $VM -GuestCredential $DomainAdminn -ScriptText "Add-OdbcDsn -Name ViewComposer -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=kw-sql','Trusted_Connection=Yes','Database=$ComposerDB') "
 
+
+# ----- Install the Composer Service
+# http://myvirtualcloud.net/vmware-view-composer-silent-install/
+
+
+
+
 # ----- Cleanup
