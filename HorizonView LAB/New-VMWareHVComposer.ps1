@@ -57,7 +57,9 @@ $CreateDB = @"
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $CreateDB 
 
-# ----- Create role and add Composer user to role
+# ----- Create VCMP_ADMIN role and add Composer user to role
+Write-Verbose "Create and Config VCMP_ADMIN_ROLE on $ComposerDB"
+
 $DBRole = @"
     import-module sqlserver
 
@@ -94,6 +96,10 @@ $DBRole = @"
         Write-Output 'Role already exists'
     }
 
+    # ----- Grant Permissions
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database $ComposerDB -Query "GRANT ALTER,REFERENCES,INSERT ON SCHEMA::dbo TO VCMP_ADMIN_ROLE"
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database $ComposerDB -Query "GRANT CREATE TABLE,CREATE VIEW,CREATE PROCEDURE TO VCMP_ADMIN_ROLE"
+
     # ----- Add login to role
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
 
@@ -114,6 +120,137 @@ $DBRole = @"
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole 
 
+# ----- Create VCMP_USER role and add Composer user to role
+Write-Verbose "Create and Config VCMP_USER_ROLE on $ComposerDB"
 
+$DBRole = @"
+    import-module sqlserver
+
+    # ----- Add Login to SQL 
+    if ( -not ( Get-SQLLogin -Name $($ComposerServiceAcct.UserName) -ServerInstance $ComputerName -ErrorAction SilentlyContinue) ) {
+        Write-Output ""Add login $($ComposerServiceAcct.UserName)""
+        Add-SQLLogin -ServerInstance $ComputerName -LoginName $($ComposerServiceAcct.UserName) -LoginType WindowsUser
+    }
+    Else {
+        Write-Output 'Login already exists'
+    }
+
+    # ----- Add login to DB
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
+    if ( -not ( `$DB.Users.Contains( '$($ComposerServiceAcct.UserName)') ) ) {
+        Write-Output ""Add login to DB $($ComposerServiceAcct.UserName)""
+        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerServiceAcct.UserName)')
+        `$user.Login = '$($ComposerServiceAcct.UserName)'
+        `$user.Create()
+    }
+    Else {
+        Write-Output 'Login already exists'
+    }
+
+    # ----- Create Role
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
+
+    if ( -Not (`$DB.Roles['VCMP_USER_ROLE']) ) {
+        Write-Output 'Creating Role'
+        `$Role = New-Object -TypeName "Microsoft.SqlServer.Management.SMO.DatabaseRole" (`$DB, 'VCMP_USER_ROLE')
+        `$Role.Create()
+    }
+    Else {
+        Write-Output 'Role already exists'
+    }
+
+    # ----- Grant Permissions
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database $ComposerDB -Query "GRANT SELECT,INSERT,zDELEZTE,UPDATE,EXECUTE ON SCHEMA::dbo TO VCMP_USER_ROLE"
+
+    # ----- Add login to role
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
+
+   if ( (`$DB.Roles['VCMP_USER_ROLE']).EnumMembers() -notContains '$($ComposerServiceAcct.username)' ) {
+       Write-Output 'Adding user to role'
+  
+      # Add-RoleMember -DB $ComposerDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerServiceAcct.username)
+  
+      (`$DB.Roles['VCMP_USER_ROLE']).AddMember( '$($ComposerServiceAcct.username)')
+
+   }
+   Else {
+       Write-Output 'Login already a member of role'
+   }
+
+
+"@
+
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole 
+
+# ----- Create VCMP_ADMIN role and add Composer user to role
+Write-Verbose "Create and Config VCMP_ADMIN_ROLE on MSDB"
+
+$DBRole = @"
+    import-module sqlserver
+
+    # ----- Add Login to SQL 
+    if ( -not ( Get-SQLLogin -Name $($ComposerServiceAcct.UserName) -ServerInstance $ComputerName -ErrorAction SilentlyContinue) ) {
+        Write-Output ""Add login $($ComposerServiceAcct.UserName)""
+        Add-SQLLogin -ServerInstance $ComputerName -LoginName $($ComposerServiceAcct.UserName) -LoginType WindowsUser
+    }
+    Else {
+        Write-Output 'Login already exists'
+    }
+
+    # ----- Add login to DB
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name MSDB
+    if ( -not ( `$DB.Users.Contains( '$($ComposerServiceAcct.UserName)') ) ) {
+        Write-Output ""Add login to DB $($ComposerServiceAcct.UserName)""
+        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerServiceAcct.UserName)')
+        `$user.Login = '$($ComposerServiceAcct.UserName)'
+        `$user.Create()
+    }
+    Else {
+        Write-Output 'Login already exists'
+    }
+
+    # ----- Create Role
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name MSDB
+
+    if ( -Not (`$DB.Roles['VCMP_ADMIN_ROLE']) ) {
+        Write-Output 'Creating Role'
+        `$Role = New-Object -TypeName "Microsoft.SqlServer.Management.SMO.DatabaseRole" (`$DB, 'VCMP_ADMIN_ROLE')
+        `$Role.Create()
+    }
+    Else {
+        Write-Output 'Role already exists'
+    }
+
+    # ----- Grant Permissions
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT SELECT ON dbo.syscategories TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT SELECT ON dbo.sysjobsteps TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT SELECT ON dbo.sysjobs TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_add_job TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_delete_job TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_add_jobstep TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_update_job TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_add_jobserver TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_add_jobschedule TO VCMP_ADMIN_ROLE'
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database MSDB -Query 'GRANT EXECUTE ON dbo.sp_add_category TO VCMP_ADMIN_ROLE'
+
+    # ----- Add login to role
+    `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name MSDB
+
+   if ( (`$DB.Roles['VCMP_ADMIN_ROLE']).EnumMembers() -notContains '$($ComposerServiceAcct.username)' ) {
+       Write-Output 'Adding user to role'
+  
+      # Add-RoleMember -DB MSDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerServiceAcct.username)
+  
+      (`$DB.Roles['VCMP_ADMIN_ROLE']).AddMember( '$($ComposerServiceAcct.username)')
+
+   }
+   Else {
+       Write-Output 'Login already a member of role'
+   }
+
+
+"@
+
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole 
 
 # ----- Cleanup
