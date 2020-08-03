@@ -4,25 +4,29 @@
 
 [CmdletBinding()]
 Param (
-    [PSCredential]$VCenterAdmin = (Get-Credential -Message "vCenter Account" ),
+    [Parameter ( Mandatory = $True )]
+    [PSCredential]$VCenterAdmin,
 
-   [PSCredential]$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account"),
+    [Parameter ( Mandatory = $True )]
+    [PSCredential]$LocalAdmin,
 
+    [Parameter ( Mandatory = $True )]
     [PSCredential]$DomainAdmin,
 
+    [Parameter ( Mandatory = $True )]
     [PSCredential]$VCSAViewUser,
 
     [PSCredential]$InstantCloneUser,
 
     [String]$ADServer,
 
+    [Parameter ( Mandatory = $True )]
     [String]$DSCModulePath,
 
     [int]$Timeout = '900',
 
-    [String]$HVLicense,
-
-    [String]$Source = 'C:\Source\VMware'
+    [Parameter ( Mandatory = $True )]
+    [String]$HVLicense
 
 )
 
@@ -42,7 +46,7 @@ if ( $VerbosePreference -eq 'Continue' ) { $IsVerbose = $True }
 #
 ## ----- OU for VDI Service Accounts
 #Write-Verbose "Create OU for Horizon View Service Accounts"
-#if ( -Not (Get-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -SearchBase "OU=VDI,DC=kings-wood,DC=local" -Filter 'Name -like "Service Accounts"') ) {
+#if ( -Not (Get-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -SearchBase "OU=VDI,DC=kings-wood,DC=local" -Filter 'Name -like "ServiceAcct"') ) {
 #    Write-Verbose "VDI OU does not exist.  Creating"
 #    New-ADOrganizationalUnit -Server $ADServer -Credential $DomainAdmin -Name "Service Accounts" -Path "OU=VDI,DC=kings-wood,DC=local"
 #}
@@ -58,8 +62,8 @@ Write-Verbose "Dot sourcing scripts"
 
 . $PSScriptRoot\DSCConfigs\New-ViewConnectionServer.ps1
 
-# ----- Dot source LCM config
-. $PSScriptRoot\DSCConfigs\LCMConfig.ps1
+# ----- Dot source LCM config (same for all scripts)
+. "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1"
 
 # ----- Build the MOF files for both the LCM and DSC script
 # ----- Build the Config MOF
@@ -80,121 +84,53 @@ Catch {
     Throw "Build-NewLABDomain : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-# ----- Connect to vCenter service so we can deal with the VM
+
+
 Try {
-    Connect-VIServer -Server $ConfigData.AllNodes.VCSA -Credential $VCenterAdmin -ErrorAction Stop
+    # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
+
+    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
+        -ESXHost $ConfigData.AllNodes.ESXHost `
+        -Template $ConfigData.AllNodes.VMTemplate `
+        -ResourcePool $ConfigData.AllNodes.ResourcePool `
+        -OSCustomization $ConfigData.AllNodes.OSCustomization `
+        -VMSwitch $ConfigData.AllNodes.Switch `
+        -PortGroup $ConfigData.AllNodes.Portgroup `
+        -LocalAdmin $LocalAdmin `
+        -CPU 4 `
+        -Memory 4 `
+        -Timeout $Timeout `
+        -ErrorAction Stop `
+        -Verbose
+
+
+
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Build-NewLABRouter : Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-# ----- Only do this if the VM does not exist.  This allows us to rerun this script if there is an error and pick up where it left off
+Write-verbose "Waiting for VM to start"
+$VM = Get-VM -Name $Configdata.AllNodes.NodeName
 
-if ( -Not (Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue) ) {
-    Write-Verbose "VM does not exist, Creating"
+while ( $VM.Guest.State -ne 'Running' ) {
+    Write-Verbose "Pausing 15 Seconds..."
+    Sleep -Seconds 15
 
-    Try {
-        # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-        Write-Verbose "Creating VM"
-        $task = New-VM -Name $ConfigData.AllNodes.NodeName -Template $ConfigData.AllNodes.VMTemplate -vmhost $ConfigData.AllNodes.ESXHost -ResourcePool $ConfigData.AllNodes.ResourcePool -OSCustomizationSpec 'WIN 2016 Sysprep' -ErrorAction Stop -RunAsync
-    
-        Write-Verbose "waiting for new-vm to complete"
-
-        Write-Verbose "Task State = $($Task.State )"
-        while ( $Task.state -ne 'Success' ) {
-            Start-Sleep -Seconds 60
-
-            Write-Verbose "Still waiting for new-vm to complete"
-
-            $Task = Get-Task -Id $Task.Id -Verbose:$False
-            Write-Verbose "Task State = $($Task.State)"
-        }
-
-
-        write-verbose "VM done"
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABRouter : Error building the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-
-    Try {
-
-        # ----- Attach the VM to the portgroup
-        Write-verbose "Attaching NIC to correct network"
-        $VMNIC = Get-NetworkAdapter -vm $VM -Name 'Network adapter 1' 
-        Write-Verbose "NIC = $($VMNIC | Out-String)"
-    
-        $PG = (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction SilentlyContinue)
-        Write-Verbose "PG = $($PG | Out-String)"
-
-        $VMNIC | Set-NetworkAdapter -Portgroup $PG -Confirm:$False -ErrorAction SilentlyContinue
-
-
-        #$VMNic = Get-NetworkAdapter -vm $VM -ErrorAction Stop 
-        #if ( $VMNIC.NetworkName -ne $ConfigData.AllNodes.PortGroup ) {
-        #    $VMNIC | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $ConfigData.AllNodes.Switch -Name $ConfigData.AllNodes.PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
-        #}
-
-        Write-Verbose "Setting CPU and Memory"
-        Set-VM -VM $VM -NumCpu 2 -MemoryGB 4 -Confirm:$False
-
-        Write-Verbose "Starting VM and wait for VM Tools to start."
-        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
-
-
-
-        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
-
-
-        Write-Verbose "Getting VM INfo"
-        # ----- reget the VM info.  passing the info via the start-vm cmd is not working it would seem.
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-
-        # ----- Sometimes the VM hostname does not get filled in.  Waiting for a bit and trying again.
-        while ( -Not $VM.Guest.HostName ) {
-            Write-Verbose "Pausing 15 Seconds..."
-            Sleep -Seconds 15
-
-            $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-        }
-
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Configuring the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-
-    Write-verbose "Waiting for VM to start"
-    $VM = Get-VM -Name $Configdata.AllNodes.NodeName
-
-    while ( $VM.Guest.State -ne 'Running' ) {
-        Write-Verbose "Pausing 15 Seconds..."
-        Sleep -Seconds 15
-
-        $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-    }
-
-    Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
-    $Seconds = 300
-    $T = 0
-    while ( $T -le $Seconds ) { 
-        Write-Verbose "Waiting for VM to 'Settle'..."
-        Start-Sleep -Seconds 5
-        $T += 5
-    }
-
+    $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 }
-Else {
-    Write-Verbose "VM Exists running config"
+
+Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
+$Seconds = 300
+$T = 0
+while ( $T -le $Seconds ) { 
+    Write-Verbose "Waiting for VM to 'Settle'...$T -le $Seconds"
+    Start-Sleep -Seconds 5
+    $T += 5
 }
+
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 $VM.Guest
@@ -274,27 +210,19 @@ Copy-Item -Path $PSScriptRoot\mof\$($Configdata.AllNodes.NodeName).mof -Destinat
 
 # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
 Write-Verbose "Copy DSC Resources"
-copy-item -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
-Copy-Item -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -force
+Copy-ItemIfNotThere -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\xSystemSecurity -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse 
+Copy-ItemIfNotThere -path $DSCModulePath\xtimezone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse
 
 # ----- Source install files
 Write-Verbose "install source"
-copy-item -path $Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe -Destination "RemoteDrive:\Temp" -Recurse -force
-
-
-# ----- Because I can't get DSC to set the DNS server I am doing before the config runs
-Write-Verbose "Set Interface DNS "
-$CMD = "import-module DNSClient; Set-DnsClientServerAddress -InterfaceIndex (Get-NetAdapter -Name Ethernet0).interfaceindex -ServerAddresses ($($Configdata.AllNodes.DNSServer -join ','))"
-Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD
+Copy-ItemIfNotThere -path "$ConfigData.AllNodes.Source\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe" -Destination "RemoteDrive:\Temp" -Recurse
 
 # ----- Run Config MOF on computer
 Write-Verbose "Final DSC MOF"
 
-#$DSCSuccess = $False
-#$Trys = 0
-#Do {
-#    Try {
+
         Start-Sleep -Seconds 60
 
         $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
@@ -306,35 +234,38 @@ Write-Verbose "Final DSC MOF"
 
         $DSCSuccess = $True
 
-#    }
-#    Catch {
-#        Write-Warning "Problem running DSC.  Pausing and then will retry"
-#        $DSCSuccess = $False
-#        $Trys++
-#
-#
-#
-#        Write-Verbose "Retrying ..."
-#    }
-#} While ( (-Not $DSCSuccess) -and ($Trys -lt $Timeout) )
+
 
 $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
 
 # ----- Wait for vm to reboot
+$Timeout = 900
+$T = 0
 Write-Verbose "Waiting for VM "
-While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction SilentlyContinue ) ) {
+While ( -Not (Get-Service -ComputerName $IPAddress -Name WinRM -ErrorAction SilentlyContinue ) -and $T -le $Timeout ) {
     Start-Sleep -s 5
-    Write-Verbose "Still Waiting"
+    Write-Verbose "Still Waiting : $T -le $Timeout"
+    $T += 5
 }
 
 
 Write-Verbose "installing VMWare Horizon View server"
 
-# ----- I broke this up as the quoting was confusing
-$Arguments = '/s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""'
-$CMD = "& 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' $Arguments"
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+$CMD = @'
+if ( -Not ( Get-CIMInstance -Class WIN32_Product -Filter 'Name = "VMware Horizon 7 Connection Server"' ) ) {
+    & 'C:\temp\VMware-Horizon-Connection-Server-x86_64-7.12.0-15770369.exe' /s /v "/qn /l c:\temp\viewinstall.log VDM_SERVER_INSTANCE_TYPE=1 INSTALLDIR=""C:\Program Files\VMware\VMware View\Server\"" FWCHOICE=1 VDM_SERVER_RECOVERY_PWD=Branman1! VDM_SERVER_RECOVERY_PWD_REMINDER=""yep"""
+
+    write-Output "Installed Horizon View"
+}
+Else {
+    Write-Output "Horizon View already installed"
+}
+'@
+
+$Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+
+Write-Verbose $Result.ScriptOutput
 
 # -------------------------------------------------------------------------------------
 # Configure Horizon View connection server after install
@@ -343,24 +274,38 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
-'checkOrigin=false' | Set-Content -Path "RemoteDrive:\Program Files\VMware\VMware View\Server\locked.properties"
+$CMD = @'
+if ( -Not ( Test-Path -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties' ) ) {
+    'checkOrigin=false' | Set-Content -Path 'c:\Program Files\VMware\VMware View\Server\locked.properties' -Force
 
-Get-service -ComputerName $Configdata.AllNodes.NodeName -Name wsbroker | Restart-Service
+    Get-service -Name wsbroker | Restart-Service
 
-
-# ----- Create vCenter AD user
-if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
-    Write-Verbose "Creating vCenter AD User for Connection Server"
-
-    $VCenterAcct = New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $VCSAViewUser.UserName -Description "vCenter AD account for Connection Server" -Path $ConfigData.AllNodes.ServiceAcctsOU -AccountPassword $VCSAViewUser.Password -Enabled $True
+    Write-Output "Creating locked.properties file and restarting Connection service"
 }
-
-# ----- Create Instant Clone AD User
-if ( -Not ([bool]( Get-ADUser -Server $ADServer -Filter {SamAccountName -eq "$($InstantCloneUser.UserName)"} -Credential $DomainAdmin ) ) ) {
-    Write-Verbose "Creating Instant Clone AD User"
-
-    $ICAcct = New-ADUser -Server $ADServer -Credential $DOmainAdmin -Name $InstantCloneUser.UserName -AccountPassword $InstantCloneUser.Password -Description "Instant Clone User" -Path $ConfigData.AllNodes.ServiceAcctsOU -Enabled $True
+Else {
+    Write-Output "Locked.properties file already exists."
 }
+'@
+
+$Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
+
+Write-Verbose $Result.ScriptOutput
+
+
+
+## ----- Create vCenter AD user
+#if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
+#    Write-Verbose "Creating vCenter AD User for Connection Server"
+#
+#    $VCenterAcct = New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $VCSAViewUser.UserName -Description "vCenter AD account for Connection Server" -Path $ConfigData.AllNodes.ServiceAcctsOU -AccountPassword $VCSAViewUser.Password -Enabled $True
+#}
+
+#### ----- Create Instant Clone AD User
+###if ( -Not ([bool]( Get-ADUser -Server $ADServer -Filter {SamAccountName -eq "$($InstantCloneUser.UserName)"} -Credential $DomainAdmin ) ) ) {
+###    Write-Verbose "Creating Instant Clone AD User"
+###
+###    $ICAcct = New-ADUser -Server $ADServer -Credential $DOmainAdmin -Name $InstantCloneUser.UserName -AccountPassword $InstantCloneUser.Password -Description "Instant Clone User" -Path $ConfigData.AllNodes.ServiceAcctsOU -Enabled $True
+###}
 
 # ----- Create VCSA Role and assign vCenter User to it
 Write-Verbose "Creating VCSA Role for vCenter View user"
@@ -424,10 +369,11 @@ if ( (($HV.ExtensionData.VirtualCenter.VirtualCenter_List()).ServerSpec.Serverna
     $enc = [system.Text.Encoding]::UTF8
     $vcencPassword.Utf8String = $enc.GetBytes($PlainvcPassword)
 
-    $spec.ServerSpec.password = $vcencPassword
+    $VCspec.ServerSpec.password = $vcencPassword
     $VCSpec.ServerSpec.ServerType = "VIRTUAL_Center"
 
-    $HV.ExtensionData.VirtualCenter.VirtualCenter_Create($HV.ExtensionData,$VCSpec)
+    #$HV.ExtensionData.VirtualCenter.VirtualCenter_Create($HV.ExtensionData,$VCSpec)
+    $HV.ExtensionData.VirtualCenter.VirtualCenter_Create($VCSpec)
 }
 Else {
     Write-Verbose "vCenter Server already associated with View"
