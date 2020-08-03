@@ -10,12 +10,14 @@
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
-$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+#$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+$ComposerServiceUser = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 #$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 $DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
+$ADServer = 'kw-dc1'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
@@ -68,4 +70,4 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
 
-. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -Verbose
+. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerServiceAcct $ComposerServiceUser -ADServer $ADServer -Verbose
