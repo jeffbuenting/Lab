@@ -11,7 +11,7 @@
 
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
-$ComposerServiceUser = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+$ComposerServiceUser = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 #$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 $DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'

@@ -10,7 +10,7 @@ param (
     [String]$ComputerName,
 
     [Parameter (Mandatory = $True) ]
-    [PSCredential]$DomainAdminn,
+    [PSCredential]$DomainAdmin,
 
     [Parameter (Mandatory = $True) ]
     [PSCredential]$ComposerServiceAcct,
@@ -41,6 +41,21 @@ Catch {
 #    New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $ComposerServiceAcct.UserName -Description "ComposerService" -Path ServiceAcct -AccountPassword $ComposerServic.Password -Enabled $True
 #}
 
+$IPAddress = $VM.Guest.IPAddress[0]
+
+# ----- Remove the drive if it exists
+Write-Verbose "Mapping drive to root of c on $($VM.Guest.HostName)"
+if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
+
+Try {
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $DomainAdmin -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Build-NewLABDomain : mapping to root.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
 
 # https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-4CF63F93-8AEC-4840-9EEF-2D60F3E6C6D1.html
 # ----- Create SQL DB for the Composer Service
@@ -62,16 +77,19 @@ $CreateDB = @"
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $CreateDB 
 
-# ----- Create VCMP_ADMIN role and add Composer user to role
-Write-Verbose "Create and Config VCMP_ADMIN_ROLE on $ComposerDB"
+# ----- add login
+Write-Verbose "Create Login for SQL and DB"
 
-$DBRole = @"
+$LOGIN = @"
     import-module sqlserver
 
+    # ----- Need to build a PSCredential object in the remote powershell session as the object is not being passed via invoke-VMScript
+    `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ComposerServiceAcct.UserName)', `$(ConvertTo-SecureString $($ComposerServiceAcct.GetNetworkCredential().Password) -AsPlainText -Force))
+
     # ----- Add Login to SQL 
-    if ( -not ( Get-SQLLogin -Name $($ComposerServiceAcct.UserName) -ServerInstance $ComputerName -ErrorAction SilentlyContinue) ) {
-        Write-Output ""Add login $($ComposerServiceAcct.UserName)""
-        Add-SQLLogin -ServerInstance $ComputerName -LoginName $($ComposerServiceAcct.UserName) -LoginType WindowsUser
+    if ( -not ( Get-SQLLogin -Name `$(`$SVCComposerAcct.UserName) -ServerInstance $ComputerName -ErrorAction SilentlyContinue) ) {
+        Write-Output ""Add login `$(`$SVCComposerAcct.UserName)""
+        Add-SQLLogin -ServerInstance $ComputerName -LoginPSCredential `$SVCComposerAcct -LoginType SqlLogin -GrantConnectSQL -Enable
     }
     Else {
         Write-Output 'Login already exists'
@@ -88,6 +106,15 @@ $DBRole = @"
     Else {
         Write-Output 'Login already exists'
     }
+"@
+
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $LOGIN 
+
+# ----- Create VCMP_ADMIN role and add Composer user to role
+Write-Verbose "Create and Config VCMP_ADMIN_ROLE on $ComposerDB"
+
+$DBRole = @"
+    import-module sqlserver
 
     # ----- Create Role
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
@@ -137,7 +164,7 @@ $DBRole = @"
         Add-SQLLogin -ServerInstance $ComputerName -LoginName $($ComposerServiceAcct.UserName) -LoginType WindowsUser
     }
     Else {
-        Write-Output 'Login already exists'
+        Write-Output 'Login already exists in SQL'
     }
 
     # ----- Add login to DB
@@ -149,7 +176,7 @@ $DBRole = @"
         `$user.Create()
     }
     Else {
-        Write-Output 'Login already exists'
+        Write-Output 'Login already exists in DB'
     }
 
     # ----- Create Role
@@ -165,7 +192,7 @@ $DBRole = @"
     }
 
     # ----- Grant Permissions
-    Invoke-Sqlcmd -ServerInstance $ComputerName -Database $ComposerDB -Query "GRANT SELECT,INSERT,zDELEZTE,UPDATE,EXECUTE ON SCHEMA::dbo TO VCMP_USER_ROLE"
+    Invoke-Sqlcmd -ServerInstance $ComputerName -Database $ComposerDB -Query "GRANT SELECT,INSERT,DELETE,UPDATE,EXECUTE ON SCHEMA::dbo TO VCMP_USER_ROLE"
 
     # ----- Add login to role
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
@@ -263,16 +290,32 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole
 # https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-3E3CF460-1653-4D1A-AAEB-7C4BE575A054.html
 Write-Verbose "Creating ODBC Connector"
 
-Invoke-VMScript -vm $VM -GuestCredential $DomainAdminn -ScriptText "Add-OdbcDsn -Name ViewComposer -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=kw-sql','Trusted_Connection=Yes','Database=$ComposerDB') "
+$ODBCCMD = @"
+    if ( -Not ( Get-ODBCDSN -Name ViewComposer -DSNType System -ErrorAction SilentlyContinue ) ) 
+    {
+        Write-OUtput 'Creating DSN'
+
+        Add-OdbcDsn -Name ViewComposer -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=kw-sql','Trusted_Connection=Yes','Database=$ComposerDB')
+    }
+    Else {
+        Write-Output 'DSN already exists.'
+    }
+"@
+
+Invoke-VMScript -vm $VM -GuestCredential $DomainAdmin -ScriptText $ODBCCMD
 
 
 # ----- Install the Composer Service
-Copy-ItemIfNotThere -Path $InstallSource -Destination \\$($VM.Guest.IPAddress[0])\c$\temp -Verbose
+Copy-ItemIfNotThere -Path $InstallSource -Destination RemoteDrive:\temp -Verbose
+
+# ----- Get Composer install file name
+$File = Get-Item -Path $InstallSource
+
 
 
 # http://myvirtualcloud.net/vmware-view-composer-silent-install/
 $ComposerCmd = @"
-    Start-Process -FilePath c:\temp\VMware-viewcomposer-7.12.0-15747753.exe -ArgumentList ""/s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'""
+    & c:\temp\$($File.Name) /s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'
 "@
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerCmd
