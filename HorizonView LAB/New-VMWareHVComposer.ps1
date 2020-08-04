@@ -267,12 +267,15 @@ Invoke-VMScript -vm $VM -GuestCredential $DomainAdminn -ScriptText "Add-OdbcDsn 
 
 
 # ----- Install the Composer Service
+Copy-ItemIfNotThere -Path $InstallSource -Destination \\$($VM.Guest.IPAddress[0])\c$\temp -Verbose
+
+
 # http://myvirtualcloud.net/vmware-view-composer-silent-install/
-$ComposerInstall = @"
-    Start-Process -FilePath $InstallSource -ArgumentList ""/s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'""
+$ComposerCmd = @"
+    Start-Process -FilePath c:\temp\VMware-viewcomposer-7.12.0-15747753.exe -ArgumentList ""/s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'""
 "@
 
-Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerInstall
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerCmd
 
 
 # ----- Cleanup

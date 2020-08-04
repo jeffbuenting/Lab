@@ -18,6 +18,7 @@ $DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
+$ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-15747753.exe'
 
 # ----- VMWare module is not in a ps path so loading manually
 Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
@@ -70,4 +71,4 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
 
-. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerServiceAcct $ComposerServiceUser -ADServer $ADServer -Verbose
+. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerServiceAcct $ComposerServiceUser -ADServer $ADServer -InstallSource $ComposerSource -Verbose
