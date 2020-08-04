@@ -16,7 +16,10 @@ param (
     [PSCredential]$ComposerServiceAcct,
 
     [Parameter (Mandatory = $True) ]
-    [String]$ADServer
+    [String]$ADServer,
+
+    [Parameter (Mandatory = $True) ]
+    [String]$InstallSource
 
 )
 
@@ -265,8 +268,11 @@ Invoke-VMScript -vm $VM -GuestCredential $DomainAdminn -ScriptText "Add-OdbcDsn 
 
 # ----- Install the Composer Service
 # http://myvirtualcloud.net/vmware-view-composer-silent-install/
+$ComposerInstall = @"
+    Start-Process -FilePath $InstallSource -ArgumentList ""/s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'""
+"@
 
-
+Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerInstall
 
 
 # ----- Cleanup
