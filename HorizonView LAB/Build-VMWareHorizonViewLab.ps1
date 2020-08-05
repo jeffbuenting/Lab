@@ -84,8 +84,6 @@ Catch {
     Throw "Build-NewLABDomain : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-
-
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
 
@@ -290,8 +288,6 @@ Else {
 $Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 Write-Verbose $Result.ScriptOutput
-
-
 
 ## ----- Create vCenter AD user
 #if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
