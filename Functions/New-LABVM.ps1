@@ -157,6 +157,9 @@
                         Try {   
                             Write-Verbose "Mounting ISO"
 
+                            Start-VM -VM $VM 
+                            Start-Sleep -Seconds 30
+
                             Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $ISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
                         }
                         Catch {
