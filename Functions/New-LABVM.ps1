@@ -136,13 +136,25 @@
                     'ISO' {
                         Write-Verbose "Building with ISO"
 
- 
+                        New-VM -Name $VMName -VMHost $ESXHost -MemoryGB $Memory -NumCpu $CPU -DiskGB 120 -DiskStorageFormat Thin -cd  -ResourcePool $ResourcePool -Location $ResourcePool -RunAsync -ErrorAction Stop
+                        
+                        Try {   
+                            Write-Verbose "Mounting ISO"
+
+                            Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $ISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
+                        }
+                        Catch {
+                            $ExceptionMessage = $_.Exception.Message
+                            $ExceptionType = $_.Exception.GetType().Fullname
+                            Write-Log -Path "New-LABVM : $LogPath\$($VMName).log" -Throw -Message "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" -Verbose:$IsVerbose
+                        }
+
                     }
                     
                     'Template' {
                         Write-Verbose "Building with Template"
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
                     }
 
                     'default' {
