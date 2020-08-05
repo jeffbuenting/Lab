@@ -1,4 +1,4 @@
-﻿$VCenterServer = '192.168.1.16'
+$VCenterServer = '192.168.1.16'
 
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account")
@@ -10,6 +10,10 @@
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
 
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 35900ef898ee6802fd49d70e008e158eda286250
 #$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerSQLAcct = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
@@ -75,4 +79,5 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 . "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerViewAcct $ComposerViewAcct -ComposerSQLAcct $ComposerSQLAcct -ADServer $ADServer -InstallSource $ComposerSource -Verbose
 
 Write-Warning "Haven't figured out how to get VCSA and View composer configured via powershell yet.  Until I do, you will have to manually do so in Horizon View Admin"
+
 
