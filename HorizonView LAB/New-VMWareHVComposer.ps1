@@ -13,7 +13,10 @@ param (
     [PSCredential]$DomainAdmin,
 
     [Parameter (Mandatory = $True) ]
-    [PSCredential]$ComposerServiceAcct,
+    [PSCredential]$ComposerSQLAcct,
+
+    [Parameter (Mandatory = $True) ]
+    [PSCredential]$ComposerViewAcct,
 
     [Parameter (Mandatory = $True) ]
     [String]$ADServer,
@@ -35,10 +38,10 @@ Catch {
 }
 
 ## ----- Create Composer user
-#if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($ComposerServiceAcct.UserName)"} -Credential $DomainAdmin) ) ) {
+#if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($ComposerSQLAcct.UserName)"} -Credential $DomainAdmin) ) ) {
 #    Write-Verbose "Creating vCenter AD User for Connection Server"
 #
-#    New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $ComposerServiceAcct.UserName -Description "ComposerService" -Path ServiceAcct -AccountPassword $ComposerServic.Password -Enabled $True
+#    New-ADUser -Server $ADServer -Credential $DomainAdmin -Name $ComposerSQLAcct.UserName -Description "ComposerService" -Path ServiceAcct -AccountPassword $ComposerServic.Password -Enabled $True
 #}
 
 $IPAddress = $VM.Guest.IPAddress[0]
@@ -84,7 +87,7 @@ $LOGIN = @"
     import-module sqlserver
 
     # ----- Need to build a PSCredential object in the remote powershell session as the object is not being passed via invoke-VMScript
-    `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ComposerServiceAcct.UserName)', `$(ConvertTo-SecureString $($ComposerServiceAcct.GetNetworkCredential().Password) -AsPlainText -Force))
+    `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ComposerSQLAcct.UserName)', `$(ConvertTo-SecureString $($ComposerSQLAcct.GetNetworkCredential().Password) -AsPlainText -Force))
 
     # ----- Add Login to SQL 
     if ( -not ( Get-SQLLogin -Name `$(`$SVCComposerAcct.UserName) -ServerInstance $ComputerName -ErrorAction SilentlyContinue) ) {
@@ -97,10 +100,10 @@ $LOGIN = @"
 
     # ----- Add login to DB 
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
-    if ( -not ( `$DB.Users.Contains( '$($ComposerServiceAcct.UserName)') ) ) {
-        Write-Output ""Add login to DB $($ComposerServiceAcct.UserName)""
-        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerServiceAcct.UserName)')
-        `$user.Login = '$($ComposerServiceAcct.UserName)'
+    if ( -not ( `$DB.Users.Contains( '$($ComposerSQLAcct.UserName)') ) ) {
+        Write-Output ""Add login to DB $($ComposerSQLAcct.UserName)""
+        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerSQLAcct.UserName)')
+        `$user.Login = '$($ComposerSQLAcct.UserName)'
         `$user.Create()
     }
     Else {
@@ -136,12 +139,12 @@ $DBRole = @"
     # ----- Add login to role
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
 
-   if ( (`$DB.Roles['VCMP_ADMIN_ROLE']).EnumMembers() -notContains '$($ComposerServiceAcct.username)' ) {
+   if ( (`$DB.Roles['VCMP_ADMIN_ROLE']).EnumMembers() -notContains '$($ComposerSQLAcct.username)' ) {
        Write-Output 'Adding user to role'
   
-      # Add-RoleMember -DB $ComposerDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerServiceAcct.username)
+      # Add-RoleMember -DB $ComposerDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerSQLAcct.username)
   
-      (`$DB.Roles['VCMP_ADMIN_ROLE']).AddMember( '$($ComposerServiceAcct.username)')
+      (`$DB.Roles['VCMP_ADMIN_ROLE']).AddMember( '$($ComposerSQLAcct.username)')
 
    }
    Else {
@@ -177,12 +180,12 @@ $DBRole = @"
     # ----- Add login to role
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name $ComposerDB
 
-   if ( (`$DB.Roles['VCMP_USER_ROLE']).EnumMembers() -notContains '$($ComposerServiceAcct.username)' ) {
+   if ( (`$DB.Roles['VCMP_USER_ROLE']).EnumMembers() -notContains '$($ComposerSQLAcct.username)' ) {
        Write-Output 'Adding user to role'
   
-      # Add-RoleMember -DB $ComposerDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerServiceAcct.username)
+      # Add-RoleMember -DB $ComposerDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerSQLAcct.username)
   
-      (`$DB.Roles['VCMP_USER_ROLE']).AddMember( '$($ComposerServiceAcct.username)')
+      (`$DB.Roles['VCMP_USER_ROLE']).AddMember( '$($ComposerSQLAcct.username)')
 
    }
    Else {
@@ -204,10 +207,10 @@ $DBRole = @"
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name MSDB
 
     # ----- Add login to DB 
-    if ( -not ( `$DB.Users.Contains( '$($ComposerServiceAcct.UserName)') ) ) {
-        Write-Output ""Add login to DB $($ComposerServiceAcct.UserName)""
-        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerServiceAcct.UserName)')
-        `$user.Login = '$($ComposerServiceAcct.UserName)'
+    if ( -not ( `$DB.Users.Contains( '$($ComposerSQLAcct.UserName)') ) ) {
+        Write-Output ""Add login to DB $($ComposerSQLAcct.UserName)""
+        `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ComposerSQLAcct.UserName)')
+        `$user.Login = '$($ComposerSQLAcct.UserName)'
         `$user.Create()
     }
     Else {
@@ -242,12 +245,12 @@ $DBRole = @"
     # ----- Refresh DB
     `$DB = Get-SQLDatabase -ServerInstance $ComputerName -Name MSDB
 
-   if ( (`$DB.Roles['VCMP_ADMIN_ROLE']).EnumMembers() -notContains '$($ComposerServiceAcct.username)' ) {
+   if ( (`$DB.Roles['VCMP_ADMIN_ROLE']).EnumMembers() -notContains '$($ComposerSQLAcct.username)' ) {
        Write-Output 'Adding user to role'
   
-      # Add-RoleMember -DB MSDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerServiceAcct.username)
+      # Add-RoleMember -DB MSDB -RoleName 'VCMP_ADMIN_ROLE' -MemberName $($ComposerSQLAcct.username)
   
-      (`$DB.Roles['VCMP_ADMIN_ROLE']).AddMember( '$($ComposerServiceAcct.username)')
+      (`$DB.Roles['VCMP_ADMIN_ROLE']).AddMember( '$($ComposerSQLAcct.username)')
 
    }
    Else {
@@ -278,6 +281,22 @@ $ODBCCMD = @"
 
 Invoke-VMScript -vm $VM -GuestCredential $DomainAdmin -ScriptText $ODBCCMD
 
+# ----- add Composer View acct to COmposer service servers local admin
+Write-Verbose "Adding accout to local admin on Composer service server"
+
+$AddtoAdmin = @"
+    if ( -Not ( Get-LocalGroupMember -Group Administrators -Member $($ComposerViewAcct.UserName) -ErrorAction SilentlyContinue ) ) {
+        Write-output 'adding Composer account to local admin'
+
+        Add-LocalGroupMember -Group Administrators -Member $($ComposerViewAcct.UserName)
+    }
+    Else {
+        Write-Output 'Already in local Admin group'
+    } 
+"@
+
+ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $AddtoAdmin
+
 
 # ----- Install the Composer Service
 Copy-ItemIfNotThere -Path $InstallSource -Destination RemoteDrive:\temp -Verbose
@@ -285,14 +304,21 @@ Copy-ItemIfNotThere -Path $InstallSource -Destination RemoteDrive:\temp -Verbose
 # ----- Get Composer install file name
 $File = Get-Item -Path $InstallSource
 
-
-
 # http://myvirtualcloud.net/vmware-view-composer-silent-install/
 $ComposerCmd = @"
-    & c:\temp\$($File.Name) /s /l c:\temp\ComposerInstall.log /v '/qn /norestart DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'
+    if ( -Not ( Get-CIMInstance -Class WIN32_Product -Filter 'Name = "VMware Horizon 7 Composer"' ) ) {
+        write-Outpupt "Installing Composer and rebooting"
+
+        & c:\temp\$($File.Name) /s /l c:\temp\ComposerInstall.log /v '/qn /norestart DB_DSN=ViewComposer DB_UserName=$($ComposerSQLAcct.UserName) DB_Password=$($ComposerSQLAcct.GetNetworkCredential().Password)'
+    }
+    Else {
+        Write-Output "Composer already installed"
+    }
 "@
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerCmd
+
+
 
 
 # ----- Cleanup
