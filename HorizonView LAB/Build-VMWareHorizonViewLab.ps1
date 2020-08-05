@@ -84,8 +84,6 @@ Catch {
     Throw "Build-NewLABDomain : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-
-
 Try {
     # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
 
@@ -291,8 +289,6 @@ $Result = Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -ScriptText $CMD
 
 Write-Verbose $Result.ScriptOutput
 
-
-
 ## ----- Create vCenter AD user
 #if ( -Not ([bool](get-aduser -server $ADServer -Filter {SamAccountName -eq "$($VCSAViewUser.UserName)"} -Credential $DomainAdmin) ) ) {
 #    Write-Verbose "Creating vCenter AD User for Connection Server"
@@ -334,10 +330,18 @@ $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 # ----- regular expression to extract IP address from IPv4 and IPv6 Ip array.
 $IPAddress = $VM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
 
+
+
+
+
+
+
+
 # ----- View API doc : https://code.vmware.com/apis/956/view
 # ----- Connect to View Server
 
 $HV = Connect-HVServer -Server $IPAddress -Credential $DomainAdmin
+
 
 # ----- Set license
 if ( -Not ( ($HV.ExtensionData.License.License_Get()).Licensed ) ) {
