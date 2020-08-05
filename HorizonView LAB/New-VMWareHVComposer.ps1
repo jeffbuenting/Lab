@@ -265,11 +265,11 @@ Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $DBRole
 Write-Verbose "Creating ODBC Connector"
 
 $ODBCCMD = @"
-    if ( -Not ( Get-ODBCDSN -Name ViewComposer2 -DSNType System -ErrorAction SilentlyContinue ) ) 
+    if ( -Not ( Get-ODBCDSN -Name ViewComposer -DSNType System -ErrorAction SilentlyContinue ) ) 
     {
         Write-OUtput 'Creating DSN'
 
-        Add-OdbcDsn -Name ViewComposer2 -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=kw-sql','Database=$ComposerDB')
+        Add-OdbcDsn -Name ViewComposer -DriverName 'SQL Server Native Client 11.0' -DsnType System -SetPropertyValue @('Server=$ComputerName','Database=$ComposerDB')
     }
     Else {
         Write-Output 'DSN already exists.'
@@ -289,7 +289,7 @@ $File = Get-Item -Path $InstallSource
 
 # http://myvirtualcloud.net/vmware-view-composer-silent-install/
 $ComposerCmd = @"
-    & c:\temp\$($File.Name) /s /l c:\temp\ComposerInstall.log /v '/qn DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'
+    & c:\temp\$($File.Name) /s /l c:\temp\ComposerInstall.log /v '/qn /norestart DB_DSN=ViewComposer DB_UserName=$($ComposerServiceAcct.UserName) DB_Password=$($ComposerServiceAcct.GetNetworkCredential().Password)'
 "@
 
 Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $ComposerCmd
