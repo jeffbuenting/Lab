@@ -21,7 +21,6 @@
          [String]$ResourcePool,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
          [String]$OSCustomization,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
@@ -41,7 +40,6 @@
          [String]$Memory = 2,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
          [PSCredential]$LocalAdmin,
   
          [Parameter (ParameterSetName = 'Template')]
@@ -136,7 +134,25 @@
                     'ISO' {
                         Write-Verbose "Building with ISO"
 
-                        New-VM -Name $VMName -VMHost $ESXHost -MemoryGB $Memory -NumCpu $CPU -DiskGB 120 -DiskStorageFormat Thin -cd  -ResourcePool $ResourcePool -Location $ResourcePool -RunAsync -ErrorAction Stop
+                        $Task = New-VM -Name $VMName -VMHost $ESXHost -MemoryGB $Memory -NumCpu $CPU -DiskGB 120 -DiskStorageFormat Thin -cd  -ResourcePool $ResourcePool -Location $ResourcePool -RunAsync -ErrorAction Stop
+
+                        Write-Verbose "waiting for new-vm to complete"
+
+                        $Task | FL *
+  
+                        Write-Verbose "Task State = $($Task.State )"
+                        while ( $Task.state -ne 'Success' ) {
+                            Start-Sleep -Seconds 15
+  
+                            Write-Verbose "Still waiting for new-vm to complete"
+                         
+                         #   $Task = Get-Task -Id $Task.Id -Verbose:$False
+                            Write-Verbose "Task State = $($Task.State)"
+                        }
+
+                        write-verbose "VM done"
+                       
+                        $VM = Get-VM -Name $VMName
                         
                         Try {   
                             Write-Verbose "Mounting ISO"
@@ -146,7 +162,7 @@
                         Catch {
                             $ExceptionMessage = $_.Exception.Message
                             $ExceptionType = $_.Exception.GetType().Fullname
-                            Write-Log -Path "New-LABVM : $LogPath\$($VMName).log" -Throw -Message "Problem mounting WINPE ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" -Verbose:$IsVerbose
+                            THrow "New-LabVM : Problem mounting ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
                         }
 
                     }
@@ -155,6 +171,20 @@
                         Write-Verbose "Building with Template"
 
                         $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+
+                        Write-Verbose "waiting for new-vm to complete"
+  
+                        Write-Verbose "Task State = $($Task.State )"
+                        while ( $Task.state -ne 'Success' ) {
+                            Start-Sleep -Seconds 15
+  
+                            Write-Verbose "Still waiting for new-vm to complete"
+  
+                            $Task = Get-Task -Id $Task.Id -Verbose:$False
+                            Write-Verbose "Task State = $($Task.State)"
+                        }
+
+                        write-verbose "VM done"
                     }
 
                     'default' {
@@ -162,19 +192,7 @@
                     }
                 }
     
-                Write-Verbose "waiting for new-vm to complete"
-  
-                Write-Verbose "Task State = $($Task.State )"
-                while ( $Task.state -ne 'Success' ) {
-                    Start-Sleep -Seconds 60
-  
-                    Write-Verbose "Still waiting for new-vm to complete"
-  
-                    $Task = Get-Task -Id $Task.Id -Verbose:$False
-                    Write-Verbose "Task State = $($Task.State)"
-                }
-
-                write-verbose "VM done"
+                
             }
             Else {
                 Write-Verbose "VM already exists.  Continuing to configuration"
@@ -217,13 +235,24 @@
             }
      
             if ( $VM.PowerState -eq 'PoweredOff') {
-                Write-Verbose "Starting VM and wait for VM Tools to start."
-                $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+
+                Switch ( $PSCmdlet.ParameterSetName ) {
+                    'ISO' {
+                        Write-Verbose "Starting VM"
+
+                        Start-VM -$VM
+                    }
+
+                    'Template' {
+                        Write-Verbose "Starting VM and wait for VM Tools to start."
+                        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
   
-                Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-                wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+                        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+                        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
   
-                Wait-Tools -VM $VM
+                        Wait-Tools -VM $VM
+                    }
+                }
             }
             Else {
                 if ( $Reboot ) {

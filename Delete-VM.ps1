@@ -14,6 +14,6 @@ Catch {
     Throw "Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-$VM =get-vm kw-horconn01
+$VM =get-vm WIN10MA
 stop-vm -VM $VM -Confirm:$False
 Remove-VM -VM $VM -DeletePermanently -Confirm:$False
