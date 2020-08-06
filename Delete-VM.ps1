@@ -15,5 +15,9 @@ Catch {
 }
 
 $VM =get-vm WIN10MA
-stop-vm -VM $VM -Confirm:$False
+
+if ( $VM.PowerState -eq 'PoweredOn' ) {
+    stop-vm -VM $VM -Confirm:$False 
+}
+
 Remove-VM -VM $VM -DeletePermanently -Confirm:$False

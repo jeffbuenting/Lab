@@ -125,7 +125,7 @@
 
         Try {
             # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-            if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue ) ) {
+            if ( -Not ( Get-VM -Name $VMName -ErrorAction SilentlyContinue ) ) {
             
                 Write-Verbose "Creating VM"
                 Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
@@ -157,10 +157,13 @@
                         Try {   
                             Write-Verbose "Mounting ISO"
 
+                            # ---- Seems silly but we have to start the VM to mount the ISO.  THen we can stop the vm and continue
                             Start-VM -VM $VM 
                             Start-Sleep -Seconds 30
 
                             Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $ISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
+
+                            Stop-VM -VM $VM -Confirm:$False
                         }
                         Catch {
                             $ExceptionMessage = $_.Exception.Message
@@ -243,7 +246,7 @@
                     'ISO' {
                         Write-Verbose "Starting VM"
 
-                        Start-VM -$VM
+                        Start-VM $VM
                     }
 
                     'Template' {

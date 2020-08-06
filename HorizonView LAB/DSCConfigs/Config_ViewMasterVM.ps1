@@ -12,10 +12,10 @@
             RetryIntervalSec = 30            
             PSDscAllowDomainUser = $True
             PsDscAllowPlainTextPassword = $true 
-            ISO = "'[LocalHDD] ISO/Windows/WIN 10 ENT.iso'" 
+            ISO = "[LocalHDD] ISO/Windows/WIN 10 ENT.iso" 
             ESXHost = '192.168.1.15'    
             Source = '\\192.168.1.166\Source'
-            OU = 'OU=VMWare Service Accounts,DC=kings-wood,DC=local' 
+
 
         }            
     )             
