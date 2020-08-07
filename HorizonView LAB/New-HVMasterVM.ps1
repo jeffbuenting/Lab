@@ -3,13 +3,16 @@
 #--------------------------------------------------------------------------------------
 
 param (
- #   [Parameter (Mandatory=$True)]
- #   [String]$VMName,
+
+    # ----- DSC Mofs
+    [Parameter (Mandatory = $True) ]
+    [String]$DSCModulePath,
+
+    [Parameter (Mandatory = $True) ]
+    [PSCredential]$LocalAdmin,
 
     [int]$Timeout = '900'
 )
-
-
 
 Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
     -DSCScript . $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
@@ -17,7 +20,7 @@ Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
     -MOFPath "$PSScriptRoot\MOF" `
     -LocalAdmin $LocalAdmin `
     -DSCModulePath $DSCModulePath `
-    -DSCResource $DSCResource `
+    -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
     -Verbose
 
 

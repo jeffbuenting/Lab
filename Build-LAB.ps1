@@ -78,4 +78,4 @@ Write-Warning "Haven't figured out how to get VCSA and View composer configured 
 
 # ----- Create Master Images
 
-. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -Verbose
+. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
