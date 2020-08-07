@@ -13,8 +13,8 @@
          [Parameter (ParameterSetName = 'Template')]
          [String]$Template,
 
-         [Parameter (ParameterSetName = 'ISO')]
-         [String]$ISO,
+ #        [Parameter (ParameterSetName = 'ISO')]
+ #        [String]$ISO,
 
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
@@ -129,51 +129,8 @@
             
                 Write-Verbose "Creating VM"
                 Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
-
-                Switch ( $PSCmdlet.ParameterSetName ) {
-                    'ISO' {
-                        Write-Verbose "Building with ISO"
-
-                        $Task = New-VM -Name $VMName -VMHost $ESXHost -MemoryGB $Memory -NumCpu $CPU -DiskGB 120 -DiskStorageFormat Thin -cd  -ResourcePool $ResourcePool -Location $ResourcePool -RunAsync -ErrorAction Stop
-
-                        Write-Verbose "waiting for new-vm to complete"
-
-                        $Task | FL *
-  
-                        Write-Verbose "Task State = $($Task.State )"
-                        while ( $Task.state -ne 'Success' ) {
-                            Start-Sleep -Seconds 15
-  
-                            Write-Verbose "Still waiting for new-vm to complete"
-                         
-                         #   $Task = Get-Task -Id $Task.Id -Verbose:$False
-                            Write-Verbose "Task State = $($Task.State)"
-                        }
-
-                        write-verbose "VM done"
-                       
-                        $VM = Get-VM -Name $VMName
-                        
-                        Try {   
-                            Write-Verbose "Mounting ISO"
-
-                            # ---- Seems silly but we have to start the VM to mount the ISO.  THen we can stop the vm and continue
-                            Start-VM -VM $VM 
-                            Start-Sleep -Seconds 30
-
-                            Get-CDDrive -vm $VM -ErrorAction Stop | Set-CDDrive -IsoPath $ISO -StartConnected:$True -Connected:$True -Confirm:$False -ErrorAction Stop 
-
-                            Stop-VM -VM $VM -Confirm:$False
-                        }
-                        Catch {
-                            $ExceptionMessage = $_.Exception.Message
-                            $ExceptionType = $_.Exception.GetType().Fullname
-                            THrow "New-LabVM : Problem mounting ISO.`n`n     $ExceptionMessage`n`n $ExceptionType" 
-                        }
-
-                    }
                     
-                    'Template' {
+
                         Write-Verbose "Building with Template"
 
                         $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
@@ -191,12 +148,7 @@
                         }
 
                         write-verbose "VM done"
-                    }
 
-                    'default' {
-                        Throw "New-LabVM : Oops problem picking parameter set Name"
-                    }
-                }
     
                 
             }
@@ -242,14 +194,6 @@
      
             if ( $VM.PowerState -eq 'PoweredOff') {
 
-                Switch ( $PSCmdlet.ParameterSetName ) {
-                    'ISO' {
-                        Write-Verbose "Starting VM"
-
-                        Start-VM $VM
-                    }
-
-                    'Template' {
                         Write-Verbose "Starting VM and wait for VM Tools to start."
                         $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
   
@@ -257,8 +201,7 @@
                         wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
   
                         Wait-Tools -VM $VM
-                    }
-                }
+
             }
             Else {
                 if ( $Reboot ) {
