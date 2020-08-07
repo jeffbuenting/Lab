@@ -3,8 +3,8 @@
 #--------------------------------------------------------------------------------------
 
 param (
-    [Parameter (Mandatory=$True)]
-    [String]$VMName,
+ #   [Parameter (Mandatory=$True)]
+ #   [String]$VMName,
 
     [int]$Timeout = '900'
 )
@@ -21,10 +21,13 @@ Try {
 
     New-LABVM -VMName $ConfigData.AllNodes.NodeName `
         -ESXHost $ConfigData.AllNodes.ESXHost `
-        -ISO $ConfigData.AllNodes.ISO `
+        -Template $ConfigData.AllNodes.VMTemplate `
         -ResourcePool $ConfigData.AllNodes.ResourcePool `
+        -Location $ConfigData.AllNodes.VMFolder `
+        -OSCustomization $ConfigData.AllNodes.OSCustomization `
         -VMSwitch $ConfigData.AllNodes.Switch `
         -PortGroup $ConfigData.AllNodes.Portgroup `
+        -LocalAdmin $LocalAdmin `
         -CPU 4 `
         -Memory 4 `
         -Timeout $Timeout `
@@ -36,3 +39,4 @@ Catch {
     $ExceptionType = $_.Exception.GetType().Fullname
     Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
+
