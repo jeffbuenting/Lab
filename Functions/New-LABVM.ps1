@@ -19,6 +19,10 @@
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
          [String]$ResourcePool,
+
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
+         [String]$Location = $ResourcePool,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [String]$OSCustomization,
@@ -133,7 +137,7 @@
 
                         Write-Verbose "Building with Template"
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
 
                         Write-Verbose "waiting for new-vm to complete"
   
