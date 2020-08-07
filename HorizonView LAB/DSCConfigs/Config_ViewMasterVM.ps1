@@ -1,7 +1,7 @@
 ﻿$ConfigData = @{             
     AllNodes = @(             
         @{             
-            Nodename = "WIN10MA"               
+            Nodename = "WIN10SurfMA"               
             Role = 'MasterImage'             
             OSCustomization = 'WIN 2016 Sysprep'
             DomainName = 'kings-wood.local'
