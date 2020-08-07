@@ -4,7 +4,10 @@
             Nodename = "WIN10MA"               
             Role = 'MasterImage'             
             OSCustomization = 'WIN 10 Sysprep'
+            CPU = 4
+            MemoryGB = 4
             DomainName = 'kings-wood.local'
+            DNSSerer = '192.168.1.50'
             ResourcePool = 'LAB' 
             VMFolder = 'MasterImages'                     
             SWitch = 'vSwitch0'
