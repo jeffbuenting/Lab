@@ -16,13 +16,13 @@
  #        [Parameter (ParameterSetName = 'ISO')]
  #        [String]$ISO,
 
-         [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
          [String]$ResourcePool,
 
          [Parameter (ParameterSetName = 'Template')]
          [Parameter (ParameterSetName = 'ISO')]
-         [String]$Location = $ResourcePool,
+         [String]$Location,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [String]$OSCustomization,
@@ -136,6 +136,10 @@
                     
 
                         Write-Verbose "Building with Template"
+
+                        # ----- Resource and Location are not required.  Need to account for this if someones environment does not use them.
+                        if ( $ResourcePool -and -not $Location ) { $Location = $ResourcePool }
+
 
                         $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
 
