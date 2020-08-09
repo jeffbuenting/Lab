@@ -20,7 +20,6 @@ configuration New-ViewMasterVM
             InterfaceAlias = 'Ethernet0'
             AddressFamily = 'IPv4'
             Address = $Node.DNSServer
-            DependsOn = "[DefaultGatewayAddress]SetDefaultGatewayE0"
         }
 
         xTimeZone EST {
@@ -28,12 +27,12 @@ configuration New-ViewMasterVM
             TimeZone = 'Eastern Standard Time'
         }
   
-        xIEEsc IESec {
+        xIEEsc IESecAdmin {
             UserRole = 'Administrators'
             IsEnabled = $False
         }
 
-        xIEEsc IESec {
+        xIEEsc IESecUsers {
             UserRole = 'Users'
             IsEnabled = $False
         }

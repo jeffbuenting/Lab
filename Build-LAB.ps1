@@ -22,12 +22,14 @@ $ADServer = 'kw-dc1'
 $ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-15747753.exe'
 
 # ----- VMWare module is not in a ps path so loading manually
-Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
+Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force -Verbose:$False
 
 # ----- Dot source functions for LAB
-. $PSSCriptRoot\Functions\New-LABVM.ps1
-. $PSScriptRoot\Functions\Copy-ItemIfNotThere.ps1
+Get-ChildItem C:\Scripts\lab\Functions | foreach { 
+    Write-Verbose "Dot sourcing $($_.FullName)"
 
+    . $_.FullName
+}
 
 # ----- Connect to vCenter service so we can deal with the VM
 Try {
@@ -74,7 +76,7 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerViewAcct $ComposerViewAcct -ComposerSQLAcct $ComposerSQLAcct -ADServer $ADServer -InstallSource $ComposerSource -Verbose
 
-Write-Warning "Haven't figured out how to get VCSA and View composer configured via powershell yet.  Until I do, you will have to manually do so in Horizon View Admin"
+# Write-Warning "Haven't figured out how to get VCSA and View composer configured via powershell yet.  Until I do, you will have to manually do so in Horizon View Admin"
 
 # ----- Create Master Images
 

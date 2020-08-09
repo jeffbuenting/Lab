@@ -7,43 +7,53 @@
 
     [CmdletBinding()]
     Param (
-
-        # ----- DSC Mofs
+         # ----- DSC Mofs
         [Parameter (Mandatory = $True) ]
         [String]$DSCConfig,
 
         [Parameter (Mandatory = $True) ]
-        [String]$DSCScript,
-
+        [String]$DSCVMScript,
+        
         [Parameter (Mandatory = $True) ]
         [String]$LCMConfig,
 
         [Parameter (Mandatory = $True) ]
-        [String]$MOFPath,
+        [PSCredential]$LocalAdmin,
 
+        [Parameter (Mandatory = $True) ]
+        [String]$MOFPath,
+        
         [Parameter (Mandatory = $True) ]
         [String]$DSCModulePath,
-
+        
         [Parameter (Mandatory = $True) ]
         [String[]]$DSCResource,
-
-        [Parameter (Mandatory = $True) ]
-        [PSCredential]$LocalAdmin,
 
         [int]$Timeout = '900'
     )
 
-    # ----- Dot source configs and DSC scripts
-    Write-Verbose "Dot sourcing scripts"
+    Try {
+        # ----- Dot source configs and DSC scripts
+        Write-Verbose "Dot sourcing scripts"
 
-    # ----- Load the Config Data
-    . $DSCConfig
+        # ----- Load the Config Data
+        Write-Verbose $DSCConfig
+        . $DSCConfig
 
-    # ----- Create the Config
-    . $DSCScript
+        # ----- Create the Config
+        Write-Verbose $DSCVMScript
+        . $DSCVMScript
 
-    # ----- Dot source LCM config (same for all scripts)
-    . $LCMConfig
+        # ----- Dot source LCM config (same for all scripts)
+        Write-Verbose $LCMConfig
+        . $LCMConfig
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
+
 
     # ----- Build the MOF files for both the LCM and DSC script
     # ----- Build the Config MOF
@@ -51,11 +61,13 @@
     if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath }
 
     # ----- Extract File Name from path
-    $FileName = (Get-Item $DSCScript).Name
+    $FileName = Get-Item $DSCVMScript | Select-Object -ExpandProperty BaseName
 
     try {
+        Write-Verbose "LCM Mof"
         LCMConfig -OutputPath $MOFPath -ErrorAction Stop
 
+        Write-Verbose "$Filename MOF"
         & $FileName -ConfigurationData $ConfigData `
             -OutputPath $MOFPath `
             -ErrorAction Stop
@@ -63,7 +75,7 @@
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABDomain : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     Try {
@@ -87,7 +99,7 @@
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Config-LabVM : Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     Write-verbose "Waiting for VM to start"
@@ -110,8 +122,31 @@
     }
 
     $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
-    $VM.Guest
 
+    # ---- Baked this into the template as I couldn't figure out how to run as admin remotely
+    # ----- Sometime there is a problem mapping because of this article https://helgeklein.com/blog/2011/08/access-denied-trying-to-connect-to-administrative-shares-on-windows-7/
+    # ----- it says win 7 but this was the problem I had in testing an the registry value fixed.
+#    $Reg = @"
+#        `$remotecmd = @'
+#            if ( (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue) -ne 1 ) {
+#                Write-Output 'Regitry value LocalAccountTokenFilterPolicy not set correctly'
+# 
+#                New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "LocalAccountTokenFilterPolicy" -Value 1
+#            }
+#            Else {
+#                Write-Output 'Regitry value LocalAccountTokenFilterPolicy is set correctly'
+#            }
+#'@
+#
+#        `$Arg = """-Command $RemoteCmd"""
+#
+#        Start-Process powershell.exe -Verb runAs -ArgumentList `$Arg 
+#"@
+#    
+#    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $Reg -ErrorAction Stop
+#
+#    Restart-VM -VM $VM -Confirm:$False | Wait-Tools
+    
     Write-Verbose "Getting IP Address"
     $IPAddress = $VM.Guest.IpAddress[0]
 
@@ -136,7 +171,7 @@
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Config-LabVM : Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     # ----- We need to copy some files to the VM.
@@ -150,7 +185,7 @@
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Config-LabVM : Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     # ----- Copy LCM Config and run on remote system

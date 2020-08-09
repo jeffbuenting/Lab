@@ -132,7 +132,7 @@
             if ( -Not ( Get-VM -Name $VMName -ErrorAction SilentlyContinue ) ) {
             
                 Write-Verbose "Creating VM"
-                Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
+        #        Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
                     
 
                         Write-Verbose "Building with Template"

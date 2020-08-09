@@ -14,19 +14,24 @@ param (
     [int]$Timeout = '900'
 )
 
+Write-Verbose "Building MasterImage"
+
 Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
-    -DSCScript . $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
-    -LCMConfig . "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
+    -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
+    -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
     -MOFPath "$PSScriptRoot\MOF" `
-    -LocalAdmin $LocalAdmin `
     -DSCModulePath $DSCModulePath `
     -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
+    -LocalAdmin $LocalAdmin `
     -Verbose
 
 
-
-
-
+#    
+#        
+#    
+#    
+#    
+#    
 
 
 
