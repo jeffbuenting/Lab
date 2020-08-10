@@ -3,7 +3,7 @@
         @{             
             Nodename = "WIN10MA"               
             Role = 'MasterImage'  
-            VMTemplate = 'WIN10OptimizedTemplate'           
+            VMTemplate = 'WIN10Template'           
             OSCustomization = 'WIN 10 Sysprep'
             CPU = 4
             MemoryGB = 4

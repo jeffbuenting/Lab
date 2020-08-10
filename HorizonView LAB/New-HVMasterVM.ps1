@@ -23,6 +23,7 @@ Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
     -DSCModulePath $DSCModulePath `
     -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
     -LocalAdmin $LocalAdmin `
+    -Timeout 1900 `
     -Verbose
 
 
