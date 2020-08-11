@@ -161,6 +161,27 @@
 
     Write-Verbose "IPAddress = $IPaddress"
 
+    # ----- So this requires to run as admin.  haven't figured how to do that via invoke-VMscript so this must be added to the Template.
+#    Try {
+#    # ----- in order to map to the remote admin share we must open the firewall 
+#        $FW = @"
+#            if ( -Not (Get-NetFirewallRule -DisplayName "File And Printer Sharing").Enabled) {
+#                Write-Output 'Enabling File and Print sharing'
+#
+#                Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled False -Profile An
+#            }
+#            Else {
+#                Write-Output "File and Print sharing already enabled"
+#            }
+#"@
+#        Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $FW -ErrorAction Stop
+#    }
+#    Catch {
+#        $ExceptionMessage = $_.Exception.Message
+#        $ExceptionType = $_.Exception.GetType().Fullname
+#        Throw "Config-LabVM : Error setting Firewall.  It is possible the Local Admin credentials are wrong.`n`n     $ExceptionMessage`n`n $ExceptionType"
+#    }
+
     # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
     Try {
         Write-Verbose "Checking if Temp directory exists"
@@ -171,7 +192,7 @@
     Catch {
         $ExceptionMessage = $_.Exception.Message
         $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Config-LabVM : Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
+        Throw "Config-LabVM : Error creating c:\temp on remote VM.  It is possible the Local Admin credentials are wrong.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
     # ----- We need to copy some files to the VM.
