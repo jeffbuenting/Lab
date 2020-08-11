@@ -195,6 +195,19 @@
         Throw "Config-LabVM : Error creating c:\temp on remote VM.  It is possible the Local Admin credentials are wrong.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
 
+    # ----- Invoke-VMScript requires PSRemoting enabled on VM.  Note the -SkipNetworkProfileCheck to get around public NIC on new VM.
+    Try {
+        Write-Verbose "Enabling PSRemoting"
+
+        Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText "Enable-PSRemoting -SkipNetworkProfileCheck" -ErrorAction Stop
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Config-LabVM : Problem enabling PSRemoting.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
+
+
     # ----- We need to copy some files to the VM.
     # ----- Remove the drive if it exists
     Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"

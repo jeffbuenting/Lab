@@ -4,6 +4,7 @@ Creating Template for WIN 2010
 - These are required for the build ps scripts
      - add registry fix for LocalAccountTokenFilterPolicy to allow remote connection
      - Add file and printer sharing firewall exception
+     - Enable-PSRemoting
 
 
 OS Customization
