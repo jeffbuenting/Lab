@@ -1,0 +1,10 @@
+Creating Template for WIN 2010
+
+-Build
+- These are required for the build ps scripts
+     - add registry fix for LocalAccountTokenFilterPolicy to allow remote connection
+     - Add file and printer sharing firewall exception
+
+
+OS Customization
+     - enable Admin via the run command once os customization in vcenter

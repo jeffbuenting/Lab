@@ -2,7 +2,7 @@
 
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
-#$VCenterAdmin = (Get-Credential -UserName "administrator@vsphere.local -Message "vCenter Account" )
+#$VCenterAdmin = (Get-Credential -UserName "administrator@vsphere.local" -Message "vCenter Account" )
 #$DomainAdmin = Get-Credential -UserName "Kings-wood\administrator" -Message "Domain Admin"
 #$ADRecoveryAccount =  Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"
 #
