@@ -5,7 +5,8 @@ configuration New-ViewMasterVM
     (                     
  #       [PSCredential]$DomainAdmin       
     )             
-    
+ 
+
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName xComputerManagement  
     Import-DSCResource -moduleName NetworkingDSC
@@ -40,6 +41,10 @@ configuration New-ViewMasterVM
 
         xComputer SetName { 
             Name = $Node.NodeName 
+        }
+
+        xUAC EnableUAC {
+            Setting = 'AlwaysNotify'
         }
 
 

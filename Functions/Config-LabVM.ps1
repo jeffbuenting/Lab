@@ -127,7 +127,7 @@
     # ----- Sometime there is a problem mapping because of this article https://helgeklein.com/blog/2011/08/access-denied-trying-to-connect-to-administrative-shares-on-windows-7/
     # ----- it says win 7 but this was the problem I had in testing an the registry value fixed.
 #    $Reg = @"
-#        `$remotecmd = @'
+#
 #            if ( (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue) -ne 1 ) {
 #                Write-Output 'Regitry value LocalAccountTokenFilterPolicy not set correctly'
 # 
@@ -136,11 +136,7 @@
 #            Else {
 #                Write-Output 'Regitry value LocalAccountTokenFilterPolicy is set correctly'
 #            }
-#'@
 #
-#        `$Arg = """-Command $RemoteCmd"""
-#
-#        Start-Process powershell.exe -Verb runAs -ArgumentList `$Arg 
 #"@
 #    
 #    Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $Reg -ErrorAction Stop
@@ -161,11 +157,11 @@
 
     Write-Verbose "IPAddress = $IPaddress"
 
-    # ----- So this requires to run as admin.  haven't figured how to do that via invoke-VMscript so this must be added to the Template.
-#    Try {
-#    # ----- in order to map to the remote admin share we must open the firewall 
+
+    Try {
+        # ----- in order to map to the remote admin share we must open the firewall 
 #        $FW = @"
-#            if ( -Not (Get-NetFirewallRule -DisplayName "File And Printer Sharing").Enabled) {
+#            if ( -Not (Get-NetFirewallRule -DisplayName "File And Printer Sharing*" | where Profile -eq 'Public' ).Enabled) {
 #                Write-Output 'Enabling File and Print sharing'
 #
 #                Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled False -Profile An
@@ -174,13 +170,13 @@
 #                Write-Output "File and Print sharing already enabled"
 #            }
 #"@
-#        Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText $FW -ErrorAction Stop
-#    }
-#    Catch {
-#        $ExceptionMessage = $_.Exception.Message
-#        $ExceptionType = $_.Exception.GetType().Fullname
-#        Throw "Config-LabVM : Error setting Firewall.  It is possible the Local Admin credentials are wrong.`n`n     $ExceptionMessage`n`n $ExceptionType"
-#    }
+        Invoke-VMScript -vm $VM -GuestCredential $LocalAdmin -ScriptText 'Set-NetFirewallRule -DisplayGroup "File and Printer Sharing" -Enabled True -Profile Any' -ErrorAction Stop
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Config-LabVM : Error setting Firewall.  It is possible the Local Admin credentials are wrong.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
 
     # ----- The MOF files were created with the new VMs name.  we need to copy it to the server and change the name to Localhost to run locally
     Try {
@@ -196,6 +192,7 @@
     }
 
     # ----- Invoke-VMScript requires PSRemoting enabled on VM.  Note the -SkipNetworkProfileCheck to get around public NIC on new VM.
+    # ----- Again requires runas admin
     Try {
         Write-Verbose "Enabling PSRemoting"
 
@@ -244,11 +241,7 @@
 
     Start-Sleep -Seconds 60
 
-    $Cmd = "Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
+    $Cmd = "Set-ExecutionPolicy -ExecutionPolicy Unrestricted ; Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
 
-    # ----- Invoke-VMScript will error as the VM DSC config forces a reboot.
     Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD  -ErrorAction SilentlyContinue
-
-
-
 }

@@ -3,12 +3,12 @@
         @{             
             Nodename = "WIN10MA"               
             Role = 'MasterImage'  
-            VMTemplate = 'WIN10Template'           
+            VMTemplate = 'WIN10_UACDisabled_Template'           
             OSCustomization = 'WIN 10 Sysprep'
             CPU = 4
             MemoryGB = 4
             DomainName = 'kings-wood.local'
-            DNSSerer = '192.168.1.50'
+            DNSServer = '192.168.1.50'
             ResourcePool = 'LAB' 
             VMFolder = 'MasterImages'                     
             SWitch = 'vSwitch0'

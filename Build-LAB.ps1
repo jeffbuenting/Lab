@@ -2,20 +2,26 @@
 
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
+$LOcalAdmin = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$VCenterAdmin = (Get-Credential -UserName "administrator@vsphere.local" -Message "vCenter Account" )
+$VCenterAdmin = New-Object System.Management.Automation.PSCredential ('administrator@vsphere.local', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$DomainAdmin = Get-Credential -UserName "Kings-wood\administrator" -Message "Domain Admin"
+$DomainAdmin = New-Object System.Management.Automation.PSCredential ('kings-wood\administrator', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$ADRecoveryAccount =  Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"
-#
+$ADRecoveryAccount = New-Object System.Management.Automation.PSCredential ('(Password Only)', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
+$SQLSvcAccount = New-Object System.Management.Automation.PSCredential ('kings-wood\svc.sql', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
+$SAAccount = New-Object System.Management.Automation.PSCredential ('SA', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerSQLAcct = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
@@ -32,6 +38,9 @@ Get-ChildItem C:\Scripts\lab\Functions | foreach {
 }
 
 # ----- Connect to vCenter service so we can deal with the VM
+# ----- vsphere 6.7 requires tls 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 Try {
     if ( $global:DefaultVIServer.Name -ne $VCenterServer -or $global:DefaultVIServer.SessionID -eq $Null ) {
         Write-Output "Connecting to $VCenterServer"
