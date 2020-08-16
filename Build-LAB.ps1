@@ -112,6 +112,19 @@ Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
 
 $SnapShot = $MasterImage | New-Snapshot -Name "$($MasterImage.Name)-$(Get-Date -Format yyyyMMMdd)"
 
+# ----- Create AD Group that will use the VDI Pool
+$Group = @"
+    if ( Get-ADGroup -Name $($PoolName)_Users -ErrorAction SilentlyContinue ) {
+        Write-Output "Creating Group"
+
+        New-ADGroup -Name $($PoolName)_Users
+    }
+    Else {
+        Write-Output "Group already exists"
+    }
+"@
+
+Invoke-VMScript -VM $MasterImage -GuestCredential $DomainAdmin -ScriptText $Group
 
 New-HVPool -LinkedClone `
     -PoolName $PoolName `
