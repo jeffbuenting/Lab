@@ -1,5 +1,7 @@
 ﻿$VCenterServer = '192.168.1.16'
 
+
+
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
 $LOcalAdmin = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
@@ -79,7 +81,7 @@ Catch {
 
 # ----- Connection View server
 # ----- I don't want the license key to be in git so I put in in a file locally 
-$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
+#$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
 
@@ -89,4 +91,37 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 # ----- Create Master Images
 
-. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+#. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+
+# ----- Create linked clone pool
+Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
+
+$VM = Get-VM WIN10MA
+
+$SnapShot = $VM | New-Snapshot -Name WIN10MA-2020AUG15
+
+
+New-HVPool -LinkedClone `
+    -PoolName 'SurfP' `
+    -UserAssignment FLOATING `
+    -ParentVM WIN10MA `
+    -SnapshotVM $SnapShot.name `
+    -VmFolder 'SurfP' `
+    -HostOrCluster 192.168.1.15 `
+    -ResourcePool 'Lab' `
+    -Datastores 'LocalHDD' `
+    -NamingMethod PATTERN `
+    -PoolDisplayName 'Surf P Pool' `
+    -Description 'Surf P Pool' `
+    -EnableProvisioning $True `
+    -NamingPattern 'KW-Surf3' `
+    -MinReady 0 `
+    -MaximumCount 1 `
+    -SpareCount 1 `
+    -ProvisioningTime UP_FRONT `
+    -SysPrepName 'WIN 10 VDI' `
+    -CustType QUICK_PREP `
+    -NetBiosName 'kings-wood' `
+    -DomainAdmin administrator `
+    -deleteOrRefreshMachineAfterLogoff DELETE `
+    -RedirectWindowsProfile $false
