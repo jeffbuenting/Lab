@@ -3,36 +3,36 @@
 #--------------------------------------------------------------------------------------
 
 param (
-    [Parameter (Mandatory=$True)]
-    [String]$VMName,
+
+    # ----- DSC Mofs
+    [Parameter (Mandatory = $True) ]
+    [String]$DSCModulePath,
+
+    [Parameter (Mandatory = $True) ]
+    [PSCredential]$LocalAdmin,
 
     [int]$Timeout = '900'
 )
 
+Write-Verbose "Building MasterImage"
 
-# ----- Dot source configs and DSC scripts
-Write-Verbose "Dot sourcing scripts"
+Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
+    -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
+    -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
+    -MOFPath "$PSScriptRoot\MOF" `
+    -DSCModulePath $DSCModulePath `
+    -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
+    -LocalAdmin $LocalAdmin `
+    -Timeout 1900 `
+    -Verbose
 
-# ----- Load the Config Data
-. $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1
 
-Try {
-    # ----- Create the VM. 
+#    
+#        
+#    
+#    
+#    
+#    
 
-    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
-        -ESXHost $ConfigData.AllNodes.ESXHost `
-        -ISO $ConfigData.AllNodes.ISO `
-        -ResourcePool $ConfigData.AllNodes.ResourcePool `
-        -VMSwitch $ConfigData.AllNodes.Switch `
-        -PortGroup $ConfigData.AllNodes.Portgroup `
-        -CPU 4 `
-        -Memory 4 `
-        -Timeout $Timeout `
-        -ErrorAction Stop `
-        -Verbose
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
+
+

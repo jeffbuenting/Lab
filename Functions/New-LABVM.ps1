@@ -16,9 +16,13 @@
  #        [Parameter (ParameterSetName = 'ISO')]
  #        [String]$ISO,
 
-         [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
          [String]$ResourcePool,
+
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
+         [String]$Location,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [String]$OSCustomization,
@@ -128,12 +132,16 @@
             if ( -Not ( Get-VM -Name $VMName -ErrorAction SilentlyContinue ) ) {
             
                 Write-Verbose "Creating VM"
-                Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
+        #        Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
                     
 
                         Write-Verbose "Building with Template"
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        # ----- Resource and Location are not required.  Need to account for this if someones environment does not use them.
+                        if ( $ResourcePool -and -not $Location ) { $Location = $ResourcePool }
+
+
+                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
 
                         Write-Verbose "waiting for new-vm to complete"
   

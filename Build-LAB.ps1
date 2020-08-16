@@ -1,13 +1,19 @@
 ﻿$VCenterServer = '192.168.1.16'
 
 # ----- Gather Credentials
-#$LocalAdmin = (Get-Credential -UserName administrator -Message "Servers Local Admin Account")
-#$VCenterAdmin = (Get-Credential -Message "vCenter Account" )
+#$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
+$LOcalAdmin = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+#$VCenterAdmin = (Get-Credential -UserName "administrator@vsphere.local" -Message "vCenter Account" )
+$VCenterAdmin = New-Object System.Management.Automation.PSCredential ('administrator@vsphere.local', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$DomainAdmin = Get-Credential -UserName "Kings-wood\administrator" -Message "Domain Admin"
+$DomainAdmin = New-Object System.Management.Automation.PSCredential ('kings-wood\administrator', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$ADRecoveryAccount =  Get-Credential -UserName '(Password Only)' -Message "New Domain Safe Mode Administrator Password"
-#
+$ADRecoveryAccount = New-Object System.Management.Automation.PSCredential ('(Password Only)', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+
 #$SQLSvcAccount = Get-Credential -UserName "kings-wood\svc.sql" -Message 'SQL Service Account'
+$SQLSvcAccount = New-Object System.Management.Automation.PSCredential ('kings-wood\svc.sql', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$SAAccount = Get-Credential -UserName SA -Message "SQL SA Account"
+$SAAccount = New-Object System.Management.Automation.PSCredential ('SA', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 #$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
@@ -22,14 +28,19 @@ $ADServer = 'kw-dc1'
 $ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-15747753.exe'
 
 # ----- VMWare module is not in a ps path so loading manually
-Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force
+Import-Module C:\Scripts\VMWare\VMWare.psd1 -Force -Verbose:$False
 
 # ----- Dot source functions for LAB
-. $PSSCriptRoot\Functions\New-LABVM.ps1
-. $PSScriptRoot\Functions\Copy-ItemIfNotThere.ps1
+Get-ChildItem C:\Scripts\lab\Functions | foreach { 
+    Write-Verbose "Dot sourcing $($_.FullName)"
 
+    . $_.FullName
+}
 
 # ----- Connect to vCenter service so we can deal with the VM
+# ----- vsphere 6.7 requires tls 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 Try {
     if ( $global:DefaultVIServer.Name -ne $VCenterServer -or $global:DefaultVIServer.SessionID -eq $Null ) {
         Write-Output "Connecting to $VCenterServer"
@@ -74,8 +85,8 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerViewAcct $ComposerViewAcct -ComposerSQLAcct $ComposerSQLAcct -ADServer $ADServer -InstallSource $ComposerSource -Verbose
 
-Write-Warning "Haven't figured out how to get VCSA and View composer configured via powershell yet.  Until I do, you will have to manually do so in Horizon View Admin"
+# Write-Warning "Haven't figured out how to get VCSA and View composer configured via powershell yet.  Until I do, you will have to manually do so in Horizon View Admin"
 
 # ----- Create Master Images
 
-. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -VMName 'WIN10MA' -Verbose
+. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose

@@ -1,6 +1,8 @@
-﻿Try {
+﻿$VCenterAdmin = New-Object System.Management.Automation.PSCredential ('administrator@vsphere.local', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+
+ Try {
     if ( $global:DefaultVIServer.Name -ne $VCenterServer -or $global:DefaultVIServer.SessionID -eq $Null ) {
-        Write-Output "Connecting to $VCenterServer"
+        Write-Output "Connecting to 192.168.1.16"
 
         Connect-VIServer -Server 192.168.1.16 -Credential $VCenterAdmin -ErrorAction Stop
     }

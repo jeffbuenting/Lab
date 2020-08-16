@@ -1,0 +1,17 @@
+Creating Template for WIN 2010
+
+-Build
+	- Disable UAC via registy key hklm:\software\microsoft\windows\CurrentVersion\Policies\System\EnableLUA = 0
+
+
+
+
+
+- These are required for the build ps scripts
+     - add registry fix for LocalAccountTokenFilterPolicy to allow remote connection
+     - Add file and printer sharing firewall exception
+     - Enable-PSRemoting
+
+
+OS Customization
+     - enable Admin via the run command once os customization in vcenter
