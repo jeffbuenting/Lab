@@ -1,5 +1,17 @@
 ﻿$VCenterServer = '192.168.1.16'
 
+$PoolName = 'SurfP'
+$PoolVMFolder = $PoolName
+$ESXHost = '192.168.1.15'
+$PoolResourcePool = 'Lab'
+$PoolDataStoreName = 'LocalHDD'
+$PoolNamePattern = 'KW-SurfP'
+$PoolMin = 0
+$PoolMax = 1
+$PoolSpare = 1
+$PoolOSCustomization = 'WIN 10 VDI'
+$DomainNetbios = 'kings-wood'
+
 
 
 # ----- Gather Credentials
@@ -91,37 +103,37 @@ Catch {
 
 # ----- Create Master Images
 
-#. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
 
 # ----- Create linked clone pool
 Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
 
-$VM = Get-VM WIN10MA
+# ----- Create Snapshot for Pool
 
-$SnapShot = $VM | New-Snapshot -Name WIN10MA-2020AUG15
+$SnapShot = $MasterImage | New-Snapshot -Name "$($MasterImage.Name)-$(Get-Date -Format yyyyMMMdd)"
 
 
 New-HVPool -LinkedClone `
-    -PoolName 'SurfP' `
+    -PoolName $PoolName `
     -UserAssignment FLOATING `
-    -ParentVM WIN10MA `
+    -ParentVM $MasterImage.Name `
     -SnapshotVM $SnapShot.name `
-    -VmFolder 'SurfP' `
-    -HostOrCluster 192.168.1.15 `
-    -ResourcePool 'Lab' `
-    -Datastores 'LocalHDD' `
+    -VmFolder $PoolVMFolder `
+    -HostOrCluster $ESXHost `
+    -ResourcePool $VDIPoolResourcePool `
+    -Datastores $PoolDataStoreName `
     -NamingMethod PATTERN `
-    -PoolDisplayName 'Surf P Pool' `
-    -Description 'Surf P Pool' `
+    -PoolDisplayName $PoolName `
+    -Description $PoolName `
     -EnableProvisioning $True `
-    -NamingPattern 'KW-Surf3' `
-    -MinReady 0 `
-    -MaximumCount 1 `
-    -SpareCount 1 `
+    -NamingPattern $PoolNamePattern `
+    -MinReady $PoolMin `
+    -MaximumCount $poolMax `
+    -SpareCount $poolSpare `
     -ProvisioningTime UP_FRONT `
-    -SysPrepName 'WIN 10 VDI' `
+    -SysPrepName $PoolOSCustomization `
     -CustType QUICK_PREP `
-    -NetBiosName 'kings-wood' `
-    -DomainAdmin administrator `
+    -NetBiosName $DomainNetbios `
+    -DomainAdmin $DomainAdmin.UserName `
     -deleteOrRefreshMachineAfterLogoff DELETE `
     -RedirectWindowsProfile $false

@@ -244,4 +244,7 @@
     $Cmd = "Set-ExecutionPolicy -ExecutionPolicy Unrestricted ; Start-DscConfiguration -path C:\temp -Wait -Verbose -force"
 
     Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD  -ErrorAction SilentlyContinue
+
+
+    Write-Output $(Get-VM -Name $Configdata.AllNodes.NodeName)
 }

@@ -16,7 +16,7 @@ param (
 
 Write-Verbose "Building MasterImage"
 
-Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
+$MasterImage = Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
     -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
     -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
     -MOFPath "$PSScriptRoot\MOF" `
@@ -27,12 +27,8 @@ Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
     -Verbose
 
 
-#    
-#        
-#    
-#    
-#    
-#    
+# ----- Return some info for use in the parent
+Write-Output $MasterImage
 
 
 
