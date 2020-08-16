@@ -1,6 +1,7 @@
 ﻿$ConfigData = @{             
     AllNodes = @(             
         @{             
+ NewMasterImage
             Nodename = "WIN10MA"               
             Role = 'MasterImage'  
             VMTemplate = 'WIN10_UACDisabled_Template'           
