@@ -1,5 +1,19 @@
 ﻿$VCenterServer = '192.168.1.16'
 
+$PoolName = 'SurfP'
+$PoolVMFolder = $PoolName
+$ESXHost = '192.168.1.15'
+$PoolResourcePool = 'Lab'
+$PoolDataStoreName = 'LocalHDD'
+$PoolNamePattern = 'KW-SurfP'
+$PoolMin = 0
+$PoolMax = 1
+$PoolSpare = 1
+$PoolOSCustomization = 'WIN 10 VDI'
+$DomainNetbios = 'kings-wood'
+
+
+
 # ----- Gather Credentials
 #$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
 $LOcalAdmin = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
@@ -79,7 +93,7 @@ Catch {
 
 # ----- Connection View server
 # ----- I don't want the license key to be in git so I put in in a file locally 
-$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
+#$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 #. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
 
@@ -89,4 +103,23 @@ $HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
 # ----- Create Master Images
 
-. "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+
+# ----- Create linked clone pool
+Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
+
+. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
+    -DomainController $DomainController `
+    -DomainAdmin $DomainAdmin `
+    -DomainNetBiosName $DomainNetBiosName `
+    -Name $PoolName `
+    -VMFolder $PoolVMFolder `
+    -HostOrCluster $ESXHost `
+    -ResourcePool $VDIPoolResourcePool `
+    -DataStore $PoolDataStore `
+    -NamingPattern $NameingPattern `
+    -MIN $PoolMin `
+    -Max $PoolMax `
+    -PoolOSCustomization $PoolOSCustomization `
+    -EntiledGroup "$($PoolName)_Users" `
+    -Verbose
