@@ -108,45 +108,18 @@ $MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePa
 # ----- Create linked clone pool
 Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
 
-# ----- Create Snapshot for Pool
-
-$SnapShot = $MasterImage | New-Snapshot -Name "$($MasterImage.Name)-$(Get-Date -Format yyyyMMMdd)"
-
-# ----- Create AD Group that will use the VDI Pool
-$Group = @"
-    if ( Get-ADGroup -Name $($PoolName)_Users -ErrorAction SilentlyContinue ) {
-        Write-Output "Creating Group"
-
-        New-ADGroup -Name $($PoolName)_Users
-    }
-    Else {
-        Write-Output "Group already exists"
-    }
-"@
-
-Invoke-VMScript -VM $MasterImage -GuestCredential $DomainAdmin -ScriptText $Group
-
-New-HVPool -LinkedClone `
-    -PoolName $PoolName `
-    -UserAssignment FLOATING `
-    -ParentVM $MasterImage.Name `
-    -SnapshotVM $SnapShot.name `
-    -VmFolder $PoolVMFolder `
+. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
+    -DomainController $DomainController `
+    -DomainAdmin $DomainAdmin `
+    -DomainNetBiosName $DomainNetBiosName `
+    -Name $PoolName `
+    -VMFolder $PoolVMFolder `
     -HostOrCluster $ESXHost `
     -ResourcePool $VDIPoolResourcePool `
-    -Datastores $PoolDataStoreName `
-    -NamingMethod PATTERN `
-    -PoolDisplayName $PoolName `
-    -Description $PoolName `
-    -EnableProvisioning $True `
-    -NamingPattern $PoolNamePattern `
-    -MinReady $PoolMin `
-    -MaximumCount $poolMax `
-    -SpareCount $poolSpare `
-    -ProvisioningTime UP_FRONT `
-    -SysPrepName $PoolOSCustomization `
-    -CustType QUICK_PREP `
-    -NetBiosName $DomainNetbios `
-    -DomainAdmin $DomainAdmin.UserName `
-    -deleteOrRefreshMachineAfterLogoff DELETE `
-    -RedirectWindowsProfile $false
+    -DataStore $PoolDataStore `
+    -NamingPattern $NameingPattern `
+    -MIN $PoolMin `
+    -Max $PoolMax `
+    -PoolOSCustomization $PoolOSCustomization `
+    -EntiledGroup "$($PoolName)_Users" `
+    -Verbose
