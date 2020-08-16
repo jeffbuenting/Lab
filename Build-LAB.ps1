@@ -104,22 +104,22 @@ Catch {
 # ----- Create Master Images
 
 $MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
-
-# ----- Create linked clone pool
-Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
-
-. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
-    -DomainController $DomainController `
-    -DomainAdmin $DomainAdmin `
-    -DomainNetBiosName $DomainNetBiosName `
-    -Name $PoolName `
-    -VMFolder $PoolVMFolder `
-    -HostOrCluster $ESXHost `
-    -ResourcePool $VDIPoolResourcePool `
-    -DataStore $PoolDataStore `
-    -NamingPattern $NameingPattern `
-    -MIN $PoolMin `
-    -Max $PoolMax `
-    -PoolOSCustomization $PoolOSCustomization `
-    -EntiledGroup "$($PoolName)_Users" `
-    -Verbose
+#
+## ----- Create linked clone pool
+#Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
+#
+#. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
+#    -DomainController $DomainController `
+#    -DomainAdmin $DomainAdmin `
+#    -DomainNetBiosName $DomainNetBiosName `
+#    -Name $PoolName `
+#    -VMFolder $PoolVMFolder `
+#    -HostOrCluster $ESXHost `
+#    -ResourcePool $VDIPoolResourcePool `
+#    -DataStore $PoolDataStore `
+#    -NamingPattern $NameingPattern `
+#    -MIN $PoolMin `
+#    -Max $PoolMax `
+#    -PoolOSCustomization $PoolOSCustomization `
+#    -EntiledGroup "$($PoolName)_Users" `
+#    -Verbose
