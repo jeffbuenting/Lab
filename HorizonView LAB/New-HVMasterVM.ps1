@@ -50,10 +50,10 @@ $IPAddress = $MasterImage.Guest.IPAddress[0]
 # ----- We need to copy some files to the VM.
 # ----- Remove the drive if it exists
 Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
-if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
+if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue | out-Null ) { Remove-PSDrive -Name RemoteDrive }
 
 Try {
-    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop
+    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
@@ -78,7 +78,7 @@ Else {
 }
 "@
 
-$Result = Invoke-VMScript -VM $MasterImage -GuestCredential $DomainAdmin -ScriptText $CMD
+$Result = Invoke-VMScript -VM $MasterImage -GuestCredential $LocalAdmin -ScriptText $CMD
 Write-Verbose $Result
 
 # ----- Return some info for use in the parent

@@ -43,9 +43,10 @@ configuration New-ViewMasterVM
             Name = $Node.NodeName 
         }
 
-        xUAC EnableUAC {
-            Setting = 'AlwaysNotify'
-        }
+        
+  #      xUAC EnableUAC {
+  #          Setting = 'AlwaysNotify'
+  #      }
 
 
 
