@@ -33,8 +33,8 @@ $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View'
 $ComposerSQLAcct = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'

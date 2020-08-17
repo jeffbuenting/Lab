@@ -208,7 +208,9 @@
     # ----- We need to copy some files to the VM.
     # ----- Remove the drive if it exists
     Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
-    if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue  ) { Remove-PSDrive -Name RemoteDrive }
+    $Drive = Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue | out-Null
+
+    if ( $Drive  ) { Remove-PSDrive -Name RemoteDrive }
 
     Try {
         New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
