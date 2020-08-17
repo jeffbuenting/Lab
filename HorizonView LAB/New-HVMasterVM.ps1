@@ -78,7 +78,7 @@ Else {
 }
 "@
 
-$Result = Invoke-VMScript -VM $MasterImage -GuestCredential $DomainAdmin -ScriptText $CMD
+#$Result = Invoke-VMScript -VM $MasterImage -GuestCredential $DomainAdmin -ScriptText $CMD
 
 # ----- Return some info for use in the parent
 Write-Output $MasterImage

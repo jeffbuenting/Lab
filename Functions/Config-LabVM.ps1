@@ -65,12 +65,12 @@
 
     try {
         Write-Verbose "LCM Mof"
-        LCMConfig -OutputPath $MOFPath -ErrorAction Stop
+        LCMConfig -OutputPath $MOFPath -ErrorAction Stop | write-Verbose
 
         Write-Verbose "$Filename MOF"
         & $FileName -ConfigurationData $ConfigData `
             -OutputPath $MOFPath `
-            -ErrorAction Stop
+            -ErrorAction Stop | Write-Verbose
     }
     Catch {
         $ExceptionMessage = $_.Exception.Message
@@ -208,10 +208,10 @@
     # ----- We need to copy some files to the VM.
     # ----- Remove the drive if it exists
     Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
-    if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
+    if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue  ) { Remove-PSDrive -Name RemoteDrive }
 
     Try {
-        New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop
+        New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
     }
     Catch {
         $ExceptionMessage = $_.Exception.Message
@@ -245,6 +245,7 @@
 
     Invoke-VMScript -VM $VM -GuestCredential $LocalAdmin -ScriptText $CMD  -ErrorAction SilentlyContinue
 
-
-    Write-Output $(Get-VM -Name $Configdata.AllNodes.NodeName)
+    Write-Verbose "Returning VM Info $($ConfigData.AllNodes.NodeName)"
+    $VM = Get-VM -Name $Configdata.AllNodes.NodeName
+    Write-Output $VM
 }

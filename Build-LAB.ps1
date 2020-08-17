@@ -3,7 +3,6 @@
 $PoolName = 'SurfP'
 $PoolVMFolder = $PoolName
 $ESXHost = '192.168.1.15'
-$PoolResourcePool = 'Lab'
 $PoolDataStoreName = 'LocalHDD'
 $PoolNamePattern = 'KW-SurfP'
 $PoolMin = 0
@@ -115,7 +114,6 @@ $MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePa
 #    -Name $PoolName `
 #    -VMFolder $PoolVMFolder `
 #    -HostOrCluster $ESXHost `
-#    -ResourcePool $VDIPoolResourcePool `
 #    -DataStore $PoolDataStore `
 #    -NamingPattern $NameingPattern `
 #    -MIN $PoolMin `
