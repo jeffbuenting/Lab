@@ -75,41 +75,41 @@ if ( $MasterImageVM.Powerstate -ne 'PoweredOn' ) {
 
     Start-VM -VM $MasterImageVM | Wait-Tools 
 }
-Else {
-    Write-Verbose 'Restarting VM'
+#Else {
+#    Write-Verbose 'Restarting VM'
 
-    Restart-VMGuest -VM $MasterImageVM | Wait-Tools
-}
+#    Restart-VMGuest -VM $MasterImageVM | Wait-Tools
+#}
 
 
-Try {
-    Write-Verbose "installing VMWare Horizon View agent"
-
-    $CMD = @"
-    Write-Verbose "Running on VM"
-    if ( -Not ( Get-CIMInstance -Class WIN32_Product -Filter 'Name = "VMware Horizon Agent"' -ErrorAction SilentlyContinue ) ) {
-        & 'C:\temp\$FileName' /s /v "/qn /l c:\temp\viewagentinstall.log VDM_VC_MANAGED_AGENT=1"
-
-        write-Output "Installed Horizon Agent"
-    }
-    Else {
-        Write-Output "Horizon agent already installed"
-    }
-"@
-
-    $Result = Invoke-VMScript -VM $MasterImageVM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
-    Write-Verbose $Result
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "New-HVMasterVM : Failed to install.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
+#Try {
+#    Write-Verbose "installing VMWare Horizon View agent"
+#
+#    $CMD = @"
+#    Write-Verbose "Running on VM"
+#    if ( -Not ( Get-CIMInstance -Class WIN32_Product -Filter 'Name = "VMware Horizon Agent"' -ErrorAction SilentlyContinue ) ) {
+#        & 'C:\temp\$FileName' /s /v "/qn /l c:\temp\viewagentinstall.log VDM_VC_MANAGED_AGENT=1"
+#
+#        write-Output "Installed Horizon Agent"
+#    }
+#    Else {
+#        Write-Output "Horizon agent already installed"
+#    }
+#"@
+#
+#    $Result = Invoke-VMScript -VM $MasterImageVM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
+#    Write-Verbose $Result
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "New-HVMasterVM : Failed to install.`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
 
 # ----- Reboot is required after the install doing it remotely for better 'control'
-Write-Verbose 'Restarting VM'
+#Write-Verbose 'Restarting VM'
 
-Restart-VMGuest -VM $MasterImageVM | Wait-Tools
+#Restart-VMGuest -VM $MasterImageVM | Wait-Tools
 
 # ----- Return some info for use in the parent
 Write-Output $MasterImageVM
