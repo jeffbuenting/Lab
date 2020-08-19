@@ -84,6 +84,7 @@
    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
        -ESXHost $ConfigData.AllNodes.ESXHost `
        -Template $ConfigData.AllNodes.VMTemplate `
+       -DataStore $ConfigData.AllNodes.DataStore `
        -ResourcePool $ConfigData.AllNodes.ResourcePool `
        -Location $ConfigData.AllNodes.VMFolder `
        -OSCustomization $ConfigData.AllNodes.OSCustomization `
