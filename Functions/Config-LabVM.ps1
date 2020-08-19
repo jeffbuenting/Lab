@@ -58,7 +58,7 @@
     # ----- Build the MOF files for both the LCM and DSC script
     # ----- Build the Config MOF
     Write-Verbose "Building DSC MOF"
-    if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath }
+    if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath | Out-Null }
 
     # ----- Extract File Name from path
     $FileName = Get-Item $DSCVMScript | Select-Object -ExpandProperty BaseName
@@ -242,6 +242,8 @@
 
     Write-Verbose "Returning VM Info $($ConfigData.AllNodes.NodeName)"
     $VM = Get-VM -Name $Configdata.AllNodes.NodeName
+
+    Write-Verbose "$($VM | Out-String)"
     
     Write-Output $VM
 }

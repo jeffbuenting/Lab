@@ -18,7 +18,7 @@ Write-Verbose "Building MasterImage"
 
 $DSCConfig = "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
 
-$MasterImage = Config-LabVM -DSCConfig $DSCConfig `
+$MasterImageVM = Config-LabVM -DSCConfig $DSCConfig `
     -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
     -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
     -MOFPath "$PSScriptRoot\MOF" `
@@ -45,12 +45,12 @@ Catch {
 }
 
 
-$IPAddress = $MasterImage.Guest.IPAddress[0]
+$IPAddress = $MasterImageVM.Guest.IPAddress[0]
 
 # ----- We need to copy some files to the VM.
 # ----- Remove the drive if it exists
 Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
-if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue | out-Null ) { Remove-PSDrive -Name RemoteDrive }
+if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue | out-Null ) { Remove-PSDrive -Name RemoteDrive | out-Null }
 
 Try {
     New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
@@ -65,6 +65,11 @@ Copy-ItemIfNotThere -Path $ConfigData.AllNodes.HorizonAgent -Destination "Remote
 
 $FileName = (Get-Item -Path $ConfigData.AllNodes.HorizonAgent)
 
+Write-Verbose "Start VM if need be"
+$MasterImageVM = Get-VM -Name $MasterImageVM.Name
+
+if ( $MasterImageVM.Powerstate -ne 'PoweredOn' ) { Start-VM -VM $MasterImageVM | Wait-Tools }
+
 Write-Verbose "installing VMWare Horizon View agent"
 
 $CMD = @"
@@ -78,11 +83,11 @@ Else {
 }
 "@
 
-$Result = Invoke-VMScript -VM $MasterImage -GuestCredential $LocalAdmin -ScriptText $CMD
+$Result = Invoke-VMScript -VM $MasterImageVM -GuestCredential $LocalAdmin -ScriptText $CMD
 Write-Verbose $Result
 
 # ----- Return some info for use in the parent
-Write-Output $MasterImage
+Write-Output $MasterImageVM
 
 
 
