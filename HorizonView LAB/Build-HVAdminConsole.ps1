@@ -32,12 +32,6 @@ Param (
     [Switch]$EventDB,
 
     [Parameter ( ParameterSetName = 'EventDB' )]
-    [String]$EventDBName,
-
-    [Parameter ( ParameterSetName = 'EventDB' )]
-    [String]$SQLServer,
-
-    [Parameter ( ParameterSetName = 'EventDB' )]
     [PSCredential]$ViewSQLAcct
 
 )
@@ -402,23 +396,23 @@ if ( $EventDB ) {
 
     # https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-4CF63F93-8AEC-4840-9EEF-2D60F3E6C6D1.html
     # ----- Create SQL DB for the Composer Service
-    Write-Verbose "Creating DB for View Events : $EventDBName"
+    Write-Verbose "Creating DB for View Events : $ConfigData.AllNodes.EventDBName"
 
 
     $CreateDB = @"
         import-module sqlserver
 
-        if ( -Not (Get-SQLDatabase -Name $EventDBName -ServerInstance $SQLServer -ErrorAction SilentlyContinue) ) {
+        if ( -Not (Get-SQLDatabase -Name $ConfigData.AllNodes.EventDBName -ServerInstance $ConfigData.AllNodes.SQLServer -ErrorAction SilentlyContinue) ) {
             Write-Output 'Creating DB'
             # create object and database  
-            invoke-sqlcmd -Query "CREATE DATABASE $EventDBName" 
+            invoke-sqlcmd -Query "CREATE DATABASE $ConfigData.AllNodes.EventDBName" 
         }
         Else {
             Write-Output 'DB already exists'
         }
 "@
 
-    Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $CreateDB 
+    Invoke-VMScript -VM $ConfigData.AllNodes.SQLServer -GuestCredential $DomainAdmin -scripttext $CreateDB 
 
     # ----- Login and permissions for View Server
 
@@ -429,16 +423,16 @@ if ( $EventDB ) {
         `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ViewSQLAcct.UserName)', `$(ConvertTo-SecureString $($ViewSQLAcct.GetNetworkCredential().Password) -AsPlainText -Force))
 
         # ----- Add Login to SQL 
-        if ( -not ( Get-SQLLogin -Name `$(`$ViewSQLrAcct.UserName) -ServerInstance $SQLServer -ErrorAction SilentlyContinue) ) {
+        if ( -not ( Get-SQLLogin -Name `$(`$ViewSQLrAcct.UserName) -ServerInstance $ConfigData.AllNodes.SQLServer -ErrorAction SilentlyContinue) ) {
             Write-Output ""Add login `$(`$ViewSQLAcct.UserName)""
-            Add-SQLLogin -ServerInstance $SQLServer -LoginPSCredential `$SVCComposerAcct -LoginType SqlLogin -GrantConnectSQL -Enable
+            Add-SQLLogin -ServerInstance $ConfigData.AllNodes.SQLServer -LoginPSCredential `$SVCComposerAcct -LoginType SqlLogin -GrantConnectSQL -Enable
         }
         Else {
             Write-Output 'Login already exists'
         }
 
         # ----- Add login to DB 
-        `$DB = Get-SQLDatabase -ServerInstance $SQLServer -Name $EventDBName
+        `$DB = Get-SQLDatabase -ServerInstance $ConfigData.AllNodes.SQLServer -Name $ConfigData.AllNodes.EventDBName
         if ( -not ( `$DB.Users.Contains( '$($ViewSQLAcct.UserName)') ) ) {
             Write-Output ""Add login to DB $($ViewSQLAcct.UserName)""
             `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ViewSQLAcct.UserName)')
@@ -450,9 +444,19 @@ if ( $EventDB ) {
         }
 "@
 
-    Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $LOGIN 
+    Invoke-VMScript -VM $ConfigData.AllNodes.SQLServer -GuestCredential $DomainAdmin -scripttext $LOGIN 
 
+
+    # ----- Config Admin Console event DB
+    Set-HVEventDatabase -ServerName $ConfigData.AllNodes.SQLServer `
+        -DatabaseName $ConfigData.AllNodes.EventDBName `
+        -UserName $ViewSQLAcct.UserName `
+        -password $ViewSQLAcct.GetNetworkCredential().Password `
+        -eventtime ONE_MONTH `
+        -HvServer $
 }
+
+
 
 
 # ----- Clean up

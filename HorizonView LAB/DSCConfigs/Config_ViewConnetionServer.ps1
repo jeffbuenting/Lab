@@ -22,6 +22,8 @@
             OU = 'OU=VMWare Service Accounts,DC=kings-wood,DC=local' 
             VCSA = '192.168.1.16' 
             VCSAViewRole = 'View Service Account'
+            EventDBName = 'ViewEvents'
+            SQLServer = 'kw-sql1'
         }            
     )             
 }  
