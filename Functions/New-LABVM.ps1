@@ -18,6 +18,10 @@
 
          [Parameter (ParameterSetName = 'Template')]
          [Parameter (ParameterSetName = 'ISO')]
+         [String]$DataStore,
+
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
          [String]$ResourcePool,
 
          [Parameter (ParameterSetName = 'Template')]
@@ -141,7 +145,7 @@
                         if ( $ResourcePool -and -not $Location ) { $Location = $ResourcePool }
 
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost  -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
 
                         Write-Verbose "waiting for new-vm to complete"
   

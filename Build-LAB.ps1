@@ -3,8 +3,7 @@
 $PoolName = 'SurfP'
 $PoolVMFolder = $PoolName
 $ESXHost = '192.168.1.15'
-$PoolResourcePool = 'Lab'
-$PoolDataStoreName = 'LocalHDD'
+$PoolDataStoreName = 'NFS-Drobo'
 $PoolNamePattern = 'KW-SurfP'
 $PoolMin = 0
 $PoolMax = 1
@@ -34,8 +33,8 @@ $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View'
 $ComposerSQLAcct = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
@@ -104,22 +103,21 @@ Catch {
 # ----- Create Master Images
 
 $MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
-
-# ----- Create linked clone pool
-Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
-
-. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
-    -DomainController $DomainController `
-    -DomainAdmin $DomainAdmin `
-    -DomainNetBiosName $DomainNetBiosName `
-    -Name $PoolName `
-    -VMFolder $PoolVMFolder `
-    -HostOrCluster $ESXHost `
-    -ResourcePool $VDIPoolResourcePool `
-    -DataStore $PoolDataStore `
-    -NamingPattern $NameingPattern `
-    -MIN $PoolMin `
-    -Max $PoolMax `
-    -PoolOSCustomization $PoolOSCustomization `
-    -EntiledGroup "$($PoolName)_Users" `
-    -Verbose
+#
+## ----- Create linked clone pool
+#Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
+#
+#. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
+#    -DomainController $DomainController `
+#    -DomainAdmin $DomainAdmin `
+#    -DomainNetBiosName $DomainNetBiosName `
+#    -Name $PoolName `
+#    -VMFolder $PoolVMFolder `
+#    -HostOrCluster $ESXHost `
+#    -DataStore $PoolDataStore `
+#    -NamingPattern $NameingPattern `
+#    -MIN $PoolMin `
+#    -Max $PoolMax `
+#    -PoolOSCustomization $PoolOSCustomization `
+#    -EntiledGroup "$($PoolName)_Users" `
+#    -Verbose

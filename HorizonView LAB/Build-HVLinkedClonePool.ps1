@@ -26,8 +26,7 @@ Param (
     [Parameter (Mandatory = $True) ]
     [String]$HostOrCluster,
 
-    [Parameter (Mandatory = $True) ]
-    [String]$ResourcePool,
+    [String]$ResourcePool = 'Resources',
 
     [Parameter (Mandatory = $True) ]
     [String]$DataStore,

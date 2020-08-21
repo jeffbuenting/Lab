@@ -16,7 +16,9 @@ param (
 
 Write-Verbose "Building MasterImage"
 
-$MasterImage = Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1 `
+$DSCConfig = "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
+
+$MasterImageVM = Config-LabVM -DSCConfig $DSCConfig `
     -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
     -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
     -MOFPath "$PSScriptRoot\MOF" `
@@ -26,9 +28,59 @@ $MasterImage = Config-LabVM -DSCConfig $PSScriptRoot\DSCConfigs\Config_ViewMaste
     -Timeout 1900 `
     -Verbose
 
+## ----- Install Horizon Agent on Master Image
+## ----- We need the config data 
+#Try {
+#    # ----- Dot source configs and DSC scripts
+#    Write-Verbose "Dot sourcing scripts"
+#
+#    # ----- Load the Config Data
+#    Write-Verbose $DSCConfig
+#    . $DSCConfig
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
+#
+#
+#$IPAddress = $MasterImageVM.Guest.IPAddress[0]
+#
+## ----- We need to copy some files to the VM.
+## ----- Remove the drive if it exists
+#Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
+#if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue | out-Null ) { Remove-PSDrive -Name RemoteDrive | out-Null }
+#
+#Try {
+#    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "Config-LabVM : Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
+#
+#Copy-ItemIfNotThere -Path $ConfigData.AllNodes.HorizonAgent -Destination "RemoteDrive:\temp"
+#
+#$FileName = (Get-Item -Path $ConfigData.AllNodes.HorizonAgent).Name
+#
+#Write-Verbose "FileName = $FileName"
+#
+#Write-Verbose "Start VM if need be"
+#$MasterImageVM = Get-VM -Name $MasterImageVM.Name
+#
+#if ( $MasterImageVM.Powerstate -ne 'PoweredOn' ) { 
+#    Write-Verbose 'Starting VM'
+#
+#    Start-VM -VM $MasterImageVM | Wait-Tools 
+#}
+
+
+#Restart-VMGuest -VM $MasterImageVM | Wait-Tools
 
 # ----- Return some info for use in the parent
-Write-Output $MasterImage
+Write-Output $MasterImageVM
 
 
 

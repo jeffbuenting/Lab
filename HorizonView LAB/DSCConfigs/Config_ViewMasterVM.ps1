@@ -1,7 +1,6 @@
 ﻿$ConfigData = @{             
     AllNodes = @(             
         @{             
- NewMasterImage
             Nodename = "WIN10MA"               
             Role = 'MasterImage'  
             VMTemplate = 'WIN10_UACDisabled_Template'           
@@ -10,7 +9,8 @@
             MemoryGB = 4
             DomainName = 'kings-wood.local'
             DNSServer = '192.168.1.50'
-            ResourcePool = 'LAB' 
+            Datastore = 'NFS-Drobo'
+            ResourcePool = 'Resources' 
             VMFolder = 'MasterImages'                     
             SWitch = 'vSwitch0'
             PortGroup = '192.168.1.x'  
@@ -19,7 +19,7 @@
             PSDscAllowDomainUser = $True
             PsDscAllowPlainTextPassword = $true  
             ESXHost = '192.168.1.15'    
-            Source = '\\192.168.1.166\Source'
+            HorizonAgent = '\\192.168.1.166\Source\VMWare\VMware-Horizon-Agent-x86_64-7.12.0-15805436.exe'
 
 
         }            
