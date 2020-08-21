@@ -99,7 +99,7 @@ Catch {
 # ----- I don't want the license key to be in git so I put in in a file locally 
 #$HVLicense = get-content \\192.168.1.166\source\VMWare\HVLicense.txt
 
-#. "$PSScriptRoot\HorizonView LAB\Build-VMWareHorizonViewLab.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
+#. "$PSScriptRoot\HorizonView LAB\Build-HVAdminConsole.ps1" -vcenterAdmin $VCenterAdmin -LocalAdmin $LocalAdmin -domainAdmin $DomainAdmin -ADServer $ADServer -dscModulePath $DSCModulePath -VCSAViewUser $VCSAViewUser -HVLicense $HVLicense -Timeout 3600 -Verbose
 
 #. "$PSScriptRoot\HorizonView LAB\New-VMWareHVComposer.ps1" -ComputerName $SQLServer -DomainAdmin $DomainAdmin -ComposerViewAcct $ComposerViewAcct -ComposerSQLAcct $ComposerSQLAcct -ADServer $ADServer -InstallSource $ComposerSource -Verbose
 
