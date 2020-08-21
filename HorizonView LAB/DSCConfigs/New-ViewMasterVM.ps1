@@ -3,7 +3,7 @@ configuration New-ViewMasterVM
 {             
   param             
     (                     
- #       [PSCredential]$DomainAdmin       
+        [PSCredential]$LocalAdmin      
     )             
  
 
@@ -43,13 +43,19 @@ configuration New-ViewMasterVM
             Name = $Node.NodeName 
         }
 
+        
+
         Package HorizonView {
             Ensure      = "Present"  
-            Path        = "C:\temp\VMware-Horizon-Agent-x86_64-7.12.0-15805436.exe"
+            #Path        = "C:\temp\VMware-Horizon-Agent-x86_64-7.12.0-15805436.exe"
+            Path        = $Node.HorizonAgent
+            Credential  = $LocalAdmin
             Name        = "VMware Horizon Agent"
             ProductId   = "0C94FB1A-6358-47FC-A3AE-3CA4F6C72C5E"
             Arguments   = '/s /v "/qn /l c:\temp\viewagentinstall.log VDM_VC_MANAGED_AGENT=1"'
+            PSDSCRunAsCredential = $LocalAdmin
             DependsOn   = '[xComputer]SetName'
+
         }
 
         

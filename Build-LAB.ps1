@@ -3,7 +3,7 @@
 $PoolName = 'SurfP'
 $PoolVMFolder = $PoolName
 $ESXHost = '192.168.1.15'
-$PoolDataStoreName = 'LocalHDD'
+$PoolDataStoreName = 'NFS-Drobo'
 $PoolNamePattern = 'KW-SurfP'
 $PoolMin = 0
 $PoolMax = 1

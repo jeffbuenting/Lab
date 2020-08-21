@@ -69,6 +69,7 @@
 
         Write-Verbose "$Filename MOF"
         & $FileName -ConfigurationData $ConfigData `
+            -LocalAdmin $LocalAdmin `
             -OutputPath $MOFPath `
             -ErrorAction Stop | Write-Verbose
     }
