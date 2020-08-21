@@ -26,7 +26,19 @@ Param (
     [int]$Timeout = '900',
 
     [Parameter ( Mandatory = $True )]
-    [String]$HVLicense
+    [String]$HVLicense,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [Switch]$EventDB,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [String]$EventDBName,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [String]$SQLServer,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [PSCredential]$ViewSQLAcct
 
 )
 
@@ -382,6 +394,66 @@ if ( (($HV.ExtensionData.VirtualCenter.VirtualCenter_List()).ServerSpec.Serverna
 Else {
     Write-Verbose "vCenter Server already associated with View"
 }
+
+
+# ----- Configure Event DB if specified
+if ( $EventDB ) {
+    Write-Verbose "Configuring View Event DB"
+
+    # https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-4CF63F93-8AEC-4840-9EEF-2D60F3E6C6D1.html
+    # ----- Create SQL DB for the Composer Service
+    Write-Verbose "Creating DB for View Events : $EventDBName"
+
+
+    $CreateDB = @"
+        import-module sqlserver
+
+        if ( -Not (Get-SQLDatabase -Name $EventDBName -ServerInstance $SQLServer -ErrorAction SilentlyContinue) ) {
+            Write-Output 'Creating DB'
+            # create object and database  
+            invoke-sqlcmd -Query "CREATE DATABASE $EventDBName" 
+        }
+        Else {
+            Write-Output 'DB already exists'
+        }
+"@
+
+    Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $CreateDB 
+
+    # ----- Login and permissions for View Server
+
+    $LOGIN = @"
+        import-module sqlserver
+
+        # ----- Need to build a PSCredential object in the remote powershell session as the object is not being passed via invoke-VMScript
+        `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ViewSQLAcct.UserName)', `$(ConvertTo-SecureString $($ViewSQLAcct.GetNetworkCredential().Password) -AsPlainText -Force))
+
+        # ----- Add Login to SQL 
+        if ( -not ( Get-SQLLogin -Name `$(`$ViewSQLrAcct.UserName) -ServerInstance $SQLServer -ErrorAction SilentlyContinue) ) {
+            Write-Output ""Add login `$(`$ViewSQLAcct.UserName)""
+            Add-SQLLogin -ServerInstance $SQLServer -LoginPSCredential `$SVCComposerAcct -LoginType SqlLogin -GrantConnectSQL -Enable
+        }
+        Else {
+            Write-Output 'Login already exists'
+        }
+
+        # ----- Add login to DB 
+        `$DB = Get-SQLDatabase -ServerInstance $SQLServer -Name $EventDBName
+        if ( -not ( `$DB.Users.Contains( '$($ViewSQLAcct.UserName)') ) ) {
+            Write-Output ""Add login to DB $($ViewSQLAcct.UserName)""
+            `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ViewSQLAcct.UserName)')
+            `$user.Login = '$($ViewSQLAcct.UserName)'
+            `$user.Create()
+        }
+        Else {
+            Write-Output 'Login already exists'
+        }
+"@
+
+    Invoke-VMScript -VM $VM -GuestCredential $DomainAdmin -scripttext $LOGIN 
+
+}
+
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
