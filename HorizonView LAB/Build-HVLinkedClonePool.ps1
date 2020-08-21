@@ -32,7 +32,7 @@ Param (
     [String]$DataStore,
 
     [Parameter (Mandatory = $True) ]
-    [String]$NameingPattern,
+    [String]$NamingPattern,
 
     [Parameter (Mandatory = $True) ]
     [String]$Min,
@@ -46,23 +46,23 @@ Param (
     [String]$PoolOSCustomization,
 
     [Parameter (Mandatory = $True) ]
-    [String[]]$EntitledGroup
+    [String]$EntitledGroup
 
 
 )
 
 # ----- Create Snapshot for Pool
 
-$SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd)"
+$SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
 
 # ----- Create AD Groups that are Entitled to use the VDI Pool
-Foreach ( $E in $EntitledGroup ) {
+#Foreach ( $E in $EntitledGroup ) {
 
     $Group = @"
-        if ( Get-ADGroup -Name $E -ErrorAction SilentlyContinue ) {
+        if ( Get-ADGroup -Identity $EntitledGroup -ErrorAction SilentlyContinue ) {
             Write-Output "Creating Group"
 
-            New-ADGroup -Name $E
+            New-ADGroup -Name $EntitledGroup
         }
         Else {
             Write-Output "Group already exists"
@@ -70,15 +70,35 @@ Foreach ( $E in $EntitledGroup ) {
 "@
 
     Invoke-VMScript -VM $DomainController -GuestCredential $DomainAdmin -ScriptText $Group
+#}
+
+
+# ----- Create Folder for Linked Clones
+if ( -Not ( Get-Folder -Name $VMFolder ) ) {
+    Write-Verbose Creating Folder
+
+    New-Folder -Name $VMFolder -Location VDI
+
+}
+Else {
+    Write-Verbose "Folder Already Exists"
 }
 
-if ( Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) {
+if ( $ResourcePool -eq 'Resources' ) {
+    Write-Verbose 'Default Pool'
+
+    $ResourcePool = $HostOrCluster
+}
+
+Write-Verbose "Checking if Pool exists : $Name"
+
+if ( -Not (Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) ) {
     Write-Verbose "Creating Pool"
 
     New-HVPool -LinkedClone `
         -PoolName $Name `
         -UserAssignment FLOATING `
-        -GlobalEntitlement $EntitledGroup
+        -GlobalEntitlement $EntitledGroup `
         -ParentVM $MasterImageVM.Name `
         -SnapshotVM $SnapShot.name `
         -VmFolder $VMFolder `
@@ -89,7 +109,7 @@ if ( Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) {
         -PoolDisplayName $Name `
         -Description $Name `
         -EnableProvisioning $True `
-        -NamingPattern $NamePattern `
+        -NamingPattern $NamingPattern `
         -MinReady $Min `
         -MaximumCount $Max `
         -SpareCount $Spare `
@@ -104,3 +124,4 @@ if ( Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) {
 Else {
     Write-Verbose "Pool already exists"
 }
+

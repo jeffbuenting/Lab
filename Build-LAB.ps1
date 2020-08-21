@@ -1,15 +1,19 @@
 ﻿$VCenterServer = '192.168.1.16'
+$ViewServer = '192.168.1.17'
+
 
 $PoolName = 'SurfP'
 $PoolVMFolder = $PoolName
 $ESXHost = '192.168.1.15'
-$PoolDataStoreName = 'NFS-Drobo'
+$PoolDataStore = 'NFS-Drobo'
 $PoolNamePattern = 'KW-SurfP'
 $PoolMin = 0
 $PoolMax = 1
 $PoolSpare = 1
 $PoolOSCustomization = 'WIN 10 VDI'
-$DomainNetbios = 'kings-wood'
+
+$DomainController = 'KW-DC1'
+$DomainNetBiosName = 'kings-wood'
 
 
 
@@ -32,6 +36,7 @@ $VCSAViewUser = New-Object System.Management.Automation.PSCredential ('SVC.View'
 #$InstantCloneUser = New-Object System.Management.Automation.PSCredential ('SVC.ViewIC', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerSQLAcct = New-Object System.Management.Automation.PSCredential ('SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings-wood\SVC.Composer', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+$ViewAdmin = $DomainAdmin
 
 $DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 #$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
@@ -102,22 +107,22 @@ Catch {
 
 # ----- Create Master Images
 
-$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
-#
-## ----- Create linked clone pool
-#Connect-HVServer -Server 192.168.1.17 -Credential $ViewAdmin
-#
-#. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
-#    -DomainController $DomainController `
-#    -DomainAdmin $DomainAdmin `
-#    -DomainNetBiosName $DomainNetBiosName `
-#    -Name $PoolName `
-#    -VMFolder $PoolVMFolder `
-#    -HostOrCluster $ESXHost `
-#    -DataStore $PoolDataStore `
-#    -NamingPattern $NameingPattern `
-#    -MIN $PoolMin `
-#    -Max $PoolMax `
-#    -PoolOSCustomization $PoolOSCustomization `
-#    -EntiledGroup "$($PoolName)_Users" `
-#    -Verbose
+#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+
+# ----- Create linked clone pool
+Connect-HVServer -Server $ViewServer -Credential $ViewAdmin
+
+. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
+    -DomainController $DomainController `
+    -DomainAdmin $DomainAdmin `
+    -DomainNetBiosName $DomainNetBiosName `
+    -Name $PoolName `
+    -VMFolder $PoolVMFolder `
+    -HostOrCluster $ESXHost `
+    -DataStore $PoolDataStore `
+    -NamingPattern $PoolNamePattern `
+    -MIN $PoolMin `
+    -Max $PoolMax `
+    -PoolOSCustomization $PoolOSCustomization `
+    -EntitledGroup "$($PoolName)_Users" `
+    -Verbose
