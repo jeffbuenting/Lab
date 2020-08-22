@@ -20,6 +20,8 @@ Param (
 
     [String]$ADServer,
 
+    [String]$APISessionTimeout = 60,
+
     [Parameter ( Mandatory = $True )]
     [String]$DSCModulePath,
 
@@ -33,6 +35,8 @@ Param (
 
     [Parameter ( ParameterSetName = 'EventDB' )]
     [PSCredential]$ViewSQLAcct
+
+
 
 )
 
@@ -276,6 +280,9 @@ Write-Verbose $Result.ScriptOutput
 # -------------------------------------------------------------------------------------
 
 
+# ----- Set the Console timeout
+Set-HVGlobalSettings -viewAPISessionTimeoutMinutes $APISessionTimeout 
+
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
 $CMD = @'
@@ -415,6 +422,7 @@ if ( $EventDB ) {
     Invoke-VMScript -VM $ConfigData.AllNodes.SQLServer -GuestCredential $DomainAdmin -scripttext $CreateDB 
 
     # ----- Login and permissions for View Server
+    # https://docs.vmware.com/en/VMware-Horizon-7/7.12/horizon-console-administration/GUID-55B26535-6202-486C-AD31-5D1C72D97291.html#GUID-55B26535-6202-486C-AD31-5D1C72D97291
 
     $LOGIN = @"
         import-module sqlserver
