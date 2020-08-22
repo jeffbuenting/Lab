@@ -20,13 +20,23 @@ Param (
 
     [String]$ADServer,
 
+    [String]$APISessionTimeout = 60,
+
     [Parameter ( Mandatory = $True )]
     [String]$DSCModulePath,
 
     [int]$Timeout = '900',
 
     [Parameter ( Mandatory = $True )]
-    [String]$HVLicense
+    [String]$HVLicense,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [Switch]$EventDB,
+
+    [Parameter ( ParameterSetName = 'EventDB' )]
+    [PSCredential]$ViewSQLAcct
+
+
 
 )
 
@@ -270,6 +280,9 @@ Write-Verbose $Result.ScriptOutput
 # -------------------------------------------------------------------------------------
 
 
+# ----- Set the Console timeout
+Set-HVGlobalSettings -viewAPISessionTimeoutMinutes $APISessionTimeout 
+
 # ----- DNS doesn't seem to be working in by environment ( because I am using a work laptop ) for this server so I need to add a config file that does this
 #https://kb.vmware.com/s/article/2144768
 $CMD = @'
@@ -382,6 +395,77 @@ if ( (($HV.ExtensionData.VirtualCenter.VirtualCenter_List()).ServerSpec.Serverna
 Else {
     Write-Verbose "vCenter Server already associated with View"
 }
+
+
+# ----- Configure Event DB if specified
+if ( $EventDB ) {
+    Write-Verbose "Configuring View Event DB"
+
+    # https://docs.vmware.com/en/VMware-Horizon-7/7.2/com.vmware.horizon-view.installation.doc/GUID-4CF63F93-8AEC-4840-9EEF-2D60F3E6C6D1.html
+    # ----- Create SQL DB for the Composer Service
+    Write-Verbose "Creating DB for View Events : $ConfigData.AllNodes.EventDBName"
+
+
+    $CreateDB = @"
+        import-module sqlserver
+
+        if ( -Not (Get-SQLDatabase -Name $ConfigData.AllNodes.EventDBName -ServerInstance $ConfigData.AllNodes.SQLServer -ErrorAction SilentlyContinue) ) {
+            Write-Output 'Creating DB'
+            # create object and database  
+            invoke-sqlcmd -Query "CREATE DATABASE $ConfigData.AllNodes.EventDBName" 
+        }
+        Else {
+            Write-Output 'DB already exists'
+        }
+"@
+
+    Invoke-VMScript -VM $ConfigData.AllNodes.SQLServer -GuestCredential $DomainAdmin -scripttext $CreateDB 
+
+    # ----- Login and permissions for View Server
+    # https://docs.vmware.com/en/VMware-Horizon-7/7.12/horizon-console-administration/GUID-55B26535-6202-486C-AD31-5D1C72D97291.html#GUID-55B26535-6202-486C-AD31-5D1C72D97291
+
+    $LOGIN = @"
+        import-module sqlserver
+
+        # ----- Need to build a PSCredential object in the remote powershell session as the object is not being passed via invoke-VMScript
+        `$SVCComposerAcct = New-Object System.Management.Automation.PSCredential ('$($ViewSQLAcct.UserName)', `$(ConvertTo-SecureString $($ViewSQLAcct.GetNetworkCredential().Password) -AsPlainText -Force))
+
+        # ----- Add Login to SQL 
+        if ( -not ( Get-SQLLogin -Name `$(`$ViewSQLrAcct.UserName) -ServerInstance $ConfigData.AllNodes.SQLServer -ErrorAction SilentlyContinue) ) {
+            Write-Output ""Add login `$(`$ViewSQLAcct.UserName)""
+            Add-SQLLogin -ServerInstance $ConfigData.AllNodes.SQLServer -LoginPSCredential `$SVCComposerAcct -LoginType SqlLogin -GrantConnectSQL -Enable
+        }
+        Else {
+            Write-Output 'Login already exists'
+        }
+
+        # ----- Add login to DB 
+        `$DB = Get-SQLDatabase -ServerInstance $ConfigData.AllNodes.SQLServer -Name $ConfigData.AllNodes.EventDBName
+        if ( -not ( `$DB.Users.Contains( '$($ViewSQLAcct.UserName)') ) ) {
+            Write-Output ""Add login to DB $($ViewSQLAcct.UserName)""
+            `$User = New-Object ('Microsoft.SqlServer.Management.Smo.User') (`$DB, '$($ViewSQLAcct.UserName)')
+            `$user.Login = '$($ViewSQLAcct.UserName)'
+            `$user.Create()
+        }
+        Else {
+            Write-Output 'Login already exists'
+        }
+"@
+
+    Invoke-VMScript -VM $ConfigData.AllNodes.SQLServer -GuestCredential $DomainAdmin -scripttext $LOGIN 
+
+
+    # ----- Config Admin Console event DB
+    Set-HVEventDatabase -ServerName $ConfigData.AllNodes.SQLServer `
+        -DatabaseName $ConfigData.AllNodes.EventDBName `
+        -UserName $ViewSQLAcct.UserName `
+        -password $ViewSQLAcct.GetNetworkCredential().Password `
+        -eventtime ONE_MONTH `
+        -HvServer $
+}
+
+
+
 
 # ----- Clean up
 Remove-PSDrive -Name RemoteDrive
