@@ -124,4 +124,4 @@ Catch {
 # ----- Create linked clone pool
 Connect-HVServer -Server $ViewServer -Credential $ViewAdmin
 
-. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -DSCConfig "$PSScriptRoot\HorizonView LAB\dscConfigs\Config_HVPool.ps1" -Verbose
+. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -DSCConfig "$PSScriptRoot\HorizonView LAB\dscConfigs\Config_HVPool.ps1" -DomainAdmin $DomainAdmin -Verbose

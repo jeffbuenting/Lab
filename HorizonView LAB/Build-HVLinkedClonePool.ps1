@@ -6,7 +6,10 @@
 [CmdletBinding()]
 Param (
     [Parameter (Mandatory = $True) ]
-    [String]$DSCConfig
+    [String]$DSCConfig,
+
+    [Parameter (Mandatory = $True) ]
+    [PSCredential]$DomainAdmin
 )
 
 Try {
@@ -29,7 +32,7 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
 
     # ----- Create Snapshot for Pool
     Try { 
-        $MasterImageVM = Get-VM -Name $Node.MasterImage -ErrorAction Stop
+        $MasterImageVM = Get-VM -Name $Node.MasterImage -ErrorAction Stop 
 
         $SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
     }
@@ -43,17 +46,19 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
     #Foreach ( $E in $EntitledGroup ) {
 
         $Group = @"
-            if ( Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue ) {
+            if ( -not ( Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue ) ) {
                 Write-Output "Creating Group"
 
-                New-ADGroup -Name $($Node.EntitledGroup)
+                New-ADGroup -Name $($Node.EntitledGroup) -GroupScope DomainLocal
             }
             Else {
                 Write-Output "Group already exists"
             }
 "@
 
-        Invoke-VMScript -VM $NOde.DomainController -GuestCredential $DomainAdmin -ScriptText $Group
+        $Result = Invoke-VMScript -VM $NOde.DomainController -GuestCredential $DomainAdmin -ScriptText $Group
+
+        Write-Verbose $Result
     #}
 
 
@@ -74,13 +79,13 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
         $Node.ResourcePool = $Node.ESXHost
     }
 
-    Write-Verbose "Checking if Pool exists : $($Node.PoolName)"
+    Write-Verbose "Checking if Pool exists : $($Node.NodeName)"
 
-    if ( -Not (Get-HVPool -PoolName $Node.PoolName -ErrorAction SilentlyContinue ) ) {
+    if ( -Not (Get-HVPool -PoolName $Node.NodeName -ErrorAction SilentlyContinue ) ) {
         Write-Verbose "Creating Pool"
 
         New-HVPool -LinkedClone `
-            -PoolName $Node.PoolName `
+            -PoolName $Node.NodeName `
             -UserAssignment FLOATING `
             -GlobalEntitlement $Node.EntitledGroup `
             -ParentVM $MasterImageVM.Name `
@@ -97,12 +102,11 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
             -MaximumCount $Node.PoolMax `
             -SpareCount $Node.PoolSpare `
             -ProvisioningTime UP_FRONT `
-            -SysPrepName $Node.PoolOSCustomization `
-            -CustType QUICK_PREP `
+            -CustType   QUICK_PREP `
             -NetBiosName $Node.DomainNetBiosName `
             -DomainAdmin $DomainAdmin.UserName `
             -AdContainer $Node.PoolContainer `
-            -enableHTMLAccess `
+            -enableHTMLAccess $True `
             -deleteOrRefreshMachineAfterLogoff DELETE `
             -RedirectWindowsProfile $false
     }
