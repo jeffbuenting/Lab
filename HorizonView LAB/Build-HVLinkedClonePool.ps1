@@ -18,6 +18,9 @@ Param (
     [String]$DomainNetBiosName,
 
     [Parameter (Mandatory = $True) ]
+    [String]$ADContainer,
+
+    [Parameter (Mandatory = $True) ]
     [String]$Name,
 
     [Parameter (Mandatory = $True) ]
@@ -118,6 +121,8 @@ if ( -Not (Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) ) {
         -CustType QUICK_PREP `
         -NetBiosName $DomainNetbios `
         -DomainAdmin $DomainAdmin.UserName `
+        -AdContainer $ADContainer `
+        -enableHTMLAccess `
         -deleteOrRefreshMachineAfterLogoff DELETE `
         -RedirectWindowsProfile $false
 }
