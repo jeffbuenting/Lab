@@ -12,4 +12,4 @@ $MapDrive = @"
     New-PSDrive -Name p -PSProvider FileSystem -Root $Path -Credential $Cred -Persist -ErrorAction stop
 "@
 
-$MapDrive | Out-File -FilePath c:\scripts\mapdrive.ps1
+$MapDrive | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
