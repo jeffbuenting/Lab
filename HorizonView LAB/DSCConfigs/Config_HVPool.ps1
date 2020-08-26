@@ -4,7 +4,7 @@
             Nodename = "SurfP"               
             Role = 'HVPool'  
             MasterImage = 'WIN10MA'
-            PoolVMFolder = "SurfP"
+            PoolVMFolder = "/KW-HQ/vm/VDI/SurfP"
             ResourcePool = 'Resources'
             ESXHost = '192.168.1.15'
             PoolDataStore = 'NFS-Drobo'
@@ -27,7 +27,7 @@
             Nodename = "DtoD"               
             Role = 'HVPool'  
             MasterImage = 'WIN10MA'
-            PoolVMFolder = "DtoD"
+            PoolVMFolder = "/KW-HQ/vm/VDI/DtoD"
             ResourcePool = 'Resources'
             ESXHost = '192.168.1.15'
             PoolDataStore = 'NFS-Drobo'
