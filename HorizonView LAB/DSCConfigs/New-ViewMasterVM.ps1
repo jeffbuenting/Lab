@@ -43,7 +43,13 @@ configuration New-ViewMasterVM
             Name = $Node.NodeName 
         }
 
-        
+        Registry Hi {
+            Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+            ValueName = 'EnableFirstLogonAnimation'
+            ValueData = 0
+            ValueType = 'Dword' 
+            Ensure = 'Absent'
+        }
 
         Package HorizonView {
             Ensure      = "Present"  
