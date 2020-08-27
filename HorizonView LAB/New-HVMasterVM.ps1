@@ -35,6 +35,17 @@ $IPAddress = $MasterImageVM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25
 Write-Verbose "IPAddress = $IPaddress"
 
 Try {
+    Write-Verbose "Set execution policy"
+
+    Invoke-VMScript -vm $MasterImageVM -GuestCredential $LocalAdmin -ScriptText "Set-ExecutionPolicy -ExecutionPolicy Unrestricted" -ErrorAction Stop
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "New-HVMasterVM : Problem setting execution policy`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
+Try {
     Write-Verbose "Checking if Scripts directory exists"
 
     $CMD = "if ( -Not (Test-Path ""c:\Scripts"") ) { New-Item -ItemType Directory -Path ""c:\Scripts"" }"

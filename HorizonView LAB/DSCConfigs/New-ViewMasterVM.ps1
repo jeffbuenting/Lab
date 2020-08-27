@@ -38,7 +38,6 @@ configuration New-ViewMasterVM
             IsEnabled = $False
         }
 
-
         xComputer SetName { 
             Name = $Node.NodeName 
         }
