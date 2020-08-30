@@ -46,7 +46,8 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
     #Foreach ( $E in $EntitledGroup ) {
 
         $Group = @"
-            if ( -not ( Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue ) ) {
+            $G = Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue
+            if ( -not ( $G ) ) {
                 Write-Output "Creating Group"
 
                 New-ADGroup -Name $($Node.EntitledGroup) -GroupScope DomainLocal
