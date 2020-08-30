@@ -15,6 +15,7 @@
             PoolOSCustomization = 'WIN 10 VDI'
             DomainController = 'KW-DC1'
             DomainNetBiosName = 'kings-wood'
+            PoolParentOU = 'OU=VDI,DC=kings-wood,DC=local'
             PoolContainer = "OU=SurfPPool,OU=VDI"
             EntitledGroup = "SurfP_Users"
             RetryCount = 20              
@@ -38,6 +39,7 @@
             PoolOSCustomization = 'WIN 10 VDI'
             DomainController = 'KW-DC1'
             DomainNetBiosName = 'kings-wood'
+            PoolParentOU = 'OU=VDI,DC=kings-wood,DC=local'
             PoolContainer = "OU=DtoDPool,OU=VDI"
             EntitledGroup = "DtoD_Users"
             RetryCount = 20              
