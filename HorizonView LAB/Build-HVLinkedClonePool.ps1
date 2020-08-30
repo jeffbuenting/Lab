@@ -109,6 +109,9 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
             -enableHTMLAccess $True `
             -deleteOrRefreshMachineAfterLogoff DELETE `
             -RedirectWindowsProfile $false
+
+        Set-HVPool -PoolName $Node.NodeName -globalEntitlement $Node.EntitledGroup -Verbose
+
     }
     Else {
         Write-Verbose "Pool already exists"
