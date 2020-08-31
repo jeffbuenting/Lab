@@ -71,54 +71,54 @@ $DSCConfig = "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
 
 $MasterImageVM = Config-LabVM -ConfigData $ConfigData `
     -DSCModulePath $DSCModulePath `
-    -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
+    -DSCResource 'NetworkingDSC','xSystemSecurity','xtimezone','ComputerManagementDSC' `
     -LocalAdmin $LocalAdmin `
     -Timeout 1900 `
     -Verbose
 
 
-# ----- Because I want to only maintain one master image and customize via scripts during the provisioning phase for each pool these scripts need to be copied to the master image
-$IPAddress = $MasterImageVM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+## ----- Because I want to only maintain one master image and customize via scripts during the provisioning phase for each pool these scripts need to be copied to the master image
+#$IPAddress = $MasterImageVM.Guest.IpAddress | Select-String -Pattern "\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+#
+#Write-Verbose "IPAddress = $IPaddress"
+#
+#Try {
+#    Write-Verbose "Set execution policy"
+#
+#    Invoke-VMScript -vm $MasterImageVM -GuestCredential $LocalAdmin -ScriptText "Set-ExecutionPolicy -ExecutionPolicy Unrestricted" -ErrorAction Stop
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "New-HVMasterVM : Problem setting execution policy`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
 
-Write-Verbose "IPAddress = $IPaddress"
+#Try {
+#    Write-Verbose "Checking if Scripts directory exists"
+#
+#    $CMD = "if ( -Not (Test-Path ""c:\Scripts"") ) { New-Item -ItemType Directory -Path ""c:\Scripts"" }"
+#    Invoke-VMScript -vm $MasterImageVM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "New-HVMasterVM : Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
 
-Try {
-    Write-Verbose "Set execution policy"
-
-    Invoke-VMScript -vm $MasterImageVM -GuestCredential $LocalAdmin -ScriptText "Set-ExecutionPolicy -ExecutionPolicy Unrestricted" -ErrorAction Stop
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "New-HVMasterVM : Problem setting execution policy`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
-
-Try {
-    Write-Verbose "Checking if Scripts directory exists"
-
-    $CMD = "if ( -Not (Test-Path ""c:\Scripts"") ) { New-Item -ItemType Directory -Path ""c:\Scripts"" }"
-    Invoke-VMScript -vm $MasterImageVM -GuestCredential $LocalAdmin -ScriptText $CMD -ErrorAction Stop
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "New-HVMasterVM : Error creating c:\temp on remote VM`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
-
-# ----- Remove the drive if it exists
-Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
-if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
-
-Try {
-    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop
-}
-Catch {
-    $ExceptionMessage = $_.Exception.Message
-    $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "New-HVMasterVM : Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
-}
-
-Copy-Item -Path $PSScriptRoot\Function\New-VDIMapDrive.ps1 -Destination RemoteDrive:\Scripts\New-VDIMapDrive.ps1
+## ----- Remove the drive if it exists
+#Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
+#if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
+#
+#Try {
+#    New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop
+#}
+#Catch {
+#    $ExceptionMessage = $_.Exception.Message
+#    $ExceptionType = $_.Exception.GetType().Fullname
+#    Throw "New-HVMasterVM : Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
+#}
+#
+#Copy-Item -Path $PSScriptRoot\Function\New-VDIMapDrive.ps1 -Destination RemoteDrive:\Scripts\New-VDIMapDrive.ps1
 
 # ----- Return some info for use in the parent
 Write-Output $MasterImageVM
