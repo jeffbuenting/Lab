@@ -123,7 +123,7 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
             -deleteOrRefreshMachineAfterLogoff DELETE `
             -RedirectWindowsProfile $false
 
-        Set-HVPool -PoolName $Node.NodeName -globalEntitlement $Node.EntitledGroup -Verbose
+    #    Set-HVPool -PoolName $Node.NodeName -globalEntitlement $Node.EntitledGroup -Verbose
 
     }
     Else {
