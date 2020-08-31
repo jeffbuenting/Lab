@@ -7,21 +7,24 @@
 
     [CmdletBinding()]
     Param (
-         # ----- DSC Mofs
         [Parameter (Mandatory = $True) ]
-        [String]$DSCConfig,
+        [String]$ConfigData,
 
-        [Parameter (Mandatory = $True) ]
-        [String]$DSCVMScript,
-        
-        [Parameter (Mandatory = $True) ]
-        [String]$LCMConfig,
+  #       # ----- DSC Mofs
+  #      [Parameter (Mandatory = $True) ]
+  #      [String]$DSCConfig,
+  #
+  #      [Parameter (Mandatory = $True) ]
+  #      [String]$DSCVMScript,
+  #      
+  #      [Parameter (Mandatory = $True) ]
+  #      [String]$LCMConfig,
 
         [Parameter (Mandatory = $True) ]
         [PSCredential]$LocalAdmin,
 
-        [Parameter (Mandatory = $True) ]
-        [String]$MOFPath,
+  #      [Parameter (Mandatory = $True) ]
+  #      [String]$MOFPath,
         
         [Parameter (Mandatory = $True) ]
         [String]$DSCModulePath,
@@ -32,52 +35,52 @@
         [int]$Timeout = '900'
     )
 
-    Try {
-        # ----- Dot source configs and DSC scripts
-        Write-Verbose "Dot sourcing scripts"
+ #   Try {
+ #       # ----- Dot source configs and DSC scripts
+ #       Write-Verbose "Dot sourcing scripts"
+ #
+ #       # ----- Load the Config Data
+ #       Write-Verbose $DSCConfig
+ #       . $DSCConfig
+ #
+ #       # ----- Create the Config
+ #       Write-Verbose $DSCVMScript
+ #       . $DSCVMScript
+ #
+ #       # ----- Dot source LCM config (same for all scripts)
+ #       Write-Verbose $LCMConfig
+ #       . $LCMConfig
+ #   }
+ #   Catch {
+ #       $ExceptionMessage = $_.Exception.Message
+ #       $ExceptionType = $_.Exception.GetType().Fullname
+ #       Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+ #   }
 
-        # ----- Load the Config Data
-        Write-Verbose $DSCConfig
-        . $DSCConfig
 
-        # ----- Create the Config
-        Write-Verbose $DSCVMScript
-        . $DSCVMScript
-
-        # ----- Dot source LCM config (same for all scripts)
-        Write-Verbose $LCMConfig
-        . $LCMConfig
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
-
-
-    # ----- Build the MOF files for both the LCM and DSC script
-    # ----- Build the Config MOF
-    Write-Verbose "Building DSC MOF"
-    if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath | Out-Null }
-
-    # ----- Extract File Name from path
-    $FileName = Get-Item $DSCVMScript | Select-Object -ExpandProperty BaseName
-
-    try {
-        Write-Verbose "LCM Mof"
-        LCMConfig -OutputPath $MOFPath -ErrorAction Stop | write-Verbose
-
-        Write-Verbose "$Filename MOF"
-        & $FileName -ConfigurationData $ConfigData `
-            -LocalAdmin $LocalAdmin `
-            -OutputPath $MOFPath `
-            -ErrorAction Stop | Write-Verbose
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
+ #   # ----- Build the MOF files for both the LCM and DSC script
+ #   # ----- Build the Config MOF
+ #   Write-Verbose "Building DSC MOF"
+ #   if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath | Out-Null }
+ #
+ #   # ----- Extract File Name from path
+ #   $FileName = Get-Item $DSCVMScript | Select-Object -ExpandProperty BaseName
+ #
+ #   try {
+ #       Write-Verbose "LCM Mof"
+ #       LCMConfig -OutputPath $MOFPath -ErrorAction Stop | write-Verbose
+ #
+ #       Write-Verbose "$Filename MOF"
+ #       & $FileName -ConfigurationData $ConfigData `
+ #           -LocalAdmin $LocalAdmin `
+ #           -OutputPath $MOFPath `
+ #           -ErrorAction Stop | Write-Verbose
+ #   }
+ #   Catch {
+ #       $ExceptionMessage = $_.Exception.Message
+ #       $ExceptionType = $_.Exception.GetType().Fullname
+ #       Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
+ #   }
 
    Try {
    # ----- Create the VM. 

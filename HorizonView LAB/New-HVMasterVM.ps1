@@ -11,17 +11,65 @@ param (
     [Parameter (Mandatory = $True) ]
     [PSCredential]$LocalAdmin,
 
+    [Parameter (Mandatory = $True) ]
+    [PSCredential]$SharedDriveCred,
+
     [int]$Timeout = '900'
 )
+
+$MOFPath = "$PSScriptRoot\MOF"
+
+Try {
+    # ----- Dot source configs and DSC scripts
+    Write-Verbose "Dot sourcing scripts"
+
+    # ----- Load the Config Data
+    Write-Verbose $DSCConfig
+    . "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
+
+    # ----- Create the Config
+    Write-Verbose $DSCVMScript
+    . "$PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1"
+
+    # ----- Dot source LCM config (same for all scripts)
+    Write-Verbose $LCMConfig
+    . "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
+
+# ----- Build the MOF files for both the LCM and DSC script
+# ----- Build the Config MOF
+Write-Verbose "Building DSC MOF"
+if ( -Not (Test-Path $MofPath) ) { New-Item -ItemType Directory -Path $MOFPath | Out-Null }
+
+try {
+    Write-Verbose "LCM Mof"
+    LCMConfig -OutputPath $MOFPath -ErrorAction Stop | write-Verbose
+
+    Write-Verbose "$Filename MOF"
+    New-ViewMasterVM -ConfigurationData $ConfigData `
+        -LocalAdmin $LocalAdmin `
+        -SharedDriveCred $SharedDriveCred `
+        -OutputPath $MOFPath `
+        -ErrorAction Stop | Write-Verbose
+}
+Catch {
+    $ExceptionMessage = $_.Exception.Message
+    $ExceptionType = $_.Exception.GetType().Fullname
+    Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
+}
+
 
 Write-Verbose "Building MasterImage"
 
 $DSCConfig = "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
 
-$MasterImageVM = Config-LabVM -DSCConfig $DSCConfig `
-    -DSCVMScript $PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1 `
-    -LCMConfig "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
-    -MOFPath "$PSScriptRoot\MOF" `
+$MasterImageVM = Config-LabVM -ConfigData $ConfigData `
     -DSCModulePath $DSCModulePath `
     -DSCResource 'xComputerManagement','NetworkingDSC','xSystemSecurity','xtimezone' `
     -LocalAdmin $LocalAdmin `

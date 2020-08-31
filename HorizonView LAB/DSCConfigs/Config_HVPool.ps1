@@ -4,7 +4,7 @@
             Nodename = "SurfP"               
             Role = 'HVPool'  
             MasterImage = 'WIN10MA'
-            PoolVMFolder = "VDI"
+            PoolVMFolder = "VDI"                   # ----- Note this is actually the parent Folder, the pool name will be used as the VM Folder under this one.
             ResourcePool = 'Resources'
             ESXHost = '192.168.1.15'
             PoolDataStore = 'NFS-Drobo'

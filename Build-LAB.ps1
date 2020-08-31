@@ -40,6 +40,8 @@ $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings
 $ViewAdmin = $DomainAdmin
 $ViewSQLAcct = New-Object System.Management.Automation.PSCredential ('ViewConnection', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
+$SharedDriveCred = New-Object System.Management.Automation.PSCredential ('Jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+
 $DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
 #$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
@@ -119,7 +121,7 @@ Catch {
 
 # ----- Create Master Images
 
-#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -SHaredDriveCred $SharedDriveCred -Verbose
 
 # ----- Create linked clone pool
 Connect-HVServer -Server $ViewServer -Credential $ViewAdmin

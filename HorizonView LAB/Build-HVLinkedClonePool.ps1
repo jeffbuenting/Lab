@@ -82,7 +82,7 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
         if ( -Not ( Get-Folder -Name $Node.PoolVMFolder ) ) {
             Write-Verbose Creating Folder
 
-            New-Folder -Name $Node.PoolVMFolder -Location VDI
+            New-Folder -Name $Node.PoolVMFolder 
 
         }
         Else {

@@ -3,7 +3,9 @@ configuration New-ViewMasterVM
 {             
   param             
     (                     
-        [PSCredential]$LocalAdmin      
+        [PSCredential]$LocalAdmin,
+        
+        [PSCredential]$ShareDriveCred    
     )             
  
 
@@ -40,6 +42,20 @@ configuration New-ViewMasterVM
 
         xComputer SetName { 
             Name = $Node.NodeName 
+        }
+
+        Script SetupScript {
+            GetScript = { @{ Result = (Get-Content C:\scripts\Set-VDIDesktop.ps1) } }
+            TestScript = { Test-Path "C:\scripts\Set-VDIDesktop.ps1" }
+            SetScript = {
+                $MapDrive = @"
+                    $Cred = New-Object System.Management.Automation.PSCredential ($ShareDriveCred.UserName, $(ConvertTo-SecureString $ShareDriveCred.GetNetworkCredentials().Password -AsPlainText -Force))
+
+                    New-PSDrive -Name p -PSProvider FileSystem -Root $Path -Credential $Cred -Persist -ErrorAction stop
+"@
+
+                    $MapDrive | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
+            }
         }
 
         Registry Hi {
