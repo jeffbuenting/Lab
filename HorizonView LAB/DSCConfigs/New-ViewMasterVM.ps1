@@ -10,7 +10,7 @@ configuration New-ViewMasterVM
  
 
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
-    Import-DscResource -ModuleName xComputerManagement  
+    Import-DscResource -ModuleName ComputerManagementDSC  
     Import-DSCResource -moduleName NetworkingDSC
     Import-DSCResource -ModuleName xTimeZone
     Import-DscResource -ModuleName xSystemSecurity
@@ -30,18 +30,26 @@ configuration New-ViewMasterVM
             TimeZone = 'Eastern Standard Time'
         }
   
-        xIEEsc IESecAdmin {
-            UserRole = 'Administrators'
-            IsEnabled = $False
+        IEEnhancedSecurityConfiguration IESecAdmin {
+            Role = 'Administrators'
+            Enabled = $False
+            SuppressRestart = $True
         }
 
-        xIEEsc IESecUsers {
-            UserRole = 'Users'
-            IsEnabled = $False
+        IEEnhancedSecurityConfiguration IESecUsers {
+            Role = 'Users'
+            Enabled = $False
+            SuppressRestart = $True
         }
 
         xComputer SetName { 
             Name = $Node.NodeName 
+        }
+
+        PowerShellExecutionPolicy ExecutionPolicy
+        {
+            ExecutionPolicyScope = 'LocalMachine'
+            ExecutionPolicy      = 'Unrestricted'
         }
 
         Script SetupScript {
@@ -56,6 +64,7 @@ configuration New-ViewMasterVM
 
                     $MapDrive | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
             }
+            DependsOn = [PowerShellExecutionPolicy]'ExecutionPolicy'
         }
 
         Registry Hi {
@@ -64,6 +73,14 @@ configuration New-ViewMasterVM
             ValueData = 0
             ValueType = 'Dword' 
             Ensure = 'Absent'
+        }
+
+        Registry RunOnce {
+            Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
+            ValueName = 'Set-VDIDesktop'
+            ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 '
+            ValueType = 'String' 
+            Ensure = 'Present'
         }
 
         Package HorizonView {
