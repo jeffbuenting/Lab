@@ -30,71 +30,71 @@ Try {
 Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
     Write-Verbose "Configuring Pool $($Node.Nodename)"
 
-    # ----- Create Snapshot for Pool
-    Try { 
-        $MasterImageVM = Get-VM -Name $Node.MasterImage -ErrorAction Stop 
+    if ( -Not (Get-HVPool -PoolName $Node.NodeName -ErrorAction SilentlyContinue ) ) {
+        Write-Verbose "Pool does not exist"
 
-        $SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
-    }
-    Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-HVLinkedClonePoole : Problem creating Master Image Snapshot.`n`n     $ExceptionMessage`n`n $ExceptionType"
-    }
+        # ----- Create Snapshot for Pool
+        Try { 
+            $MasterImageVM = Get-VM -Name $Node.MasterImage -ErrorAction Stop 
 
-    # ----- Create AD Groups that are Entitled to use the VDI Pool
-    #Foreach ( $E in $EntitledGroup ) {
-
-    Write-Verbose "Checking for AD Group : $($Node.EntitledGroup) and OU"
-
-    $Group = @"
-        `$OU = Get-ADOrganizationalUnit -Filter { Name -eq '$($Node.NodeName)Pool'} -ErrorAction SilentlyContinue
-        if ( -Not ( `$OU ) ) { 
-            Write-Output "Creating OU"
-
-            New-ADOrganizationalUnit -Name $($Node.NodeName)Pool -Path '$($Node.PoolParentOU)'
+            $SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
         }
-        Else {
-            Write-Output "OU already Exists"
+        Catch {
+            $ExceptionMessage = $_.Exception.Message
+            $ExceptionType = $_.Exception.GetType().Fullname
+            Throw "Build-HVLinkedClonePoole : Problem creating Master Image Snapshot.`n`n     $ExceptionMessage`n`n $ExceptionType"
         }
 
-        `$G = Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue
-        if ( -not ( `$G ) ) {
-            Write-Output "Creating Group"
+        # ----- Create AD Groups that are Entitled to use the VDI Pool
+        #Foreach ( $E in $EntitledGroup ) {
 
-            New-ADGroup -Name $($Node.EntitledGroup) -GroupScope DomainLocal
-        }
-        Else {
-            Write-Output "Group already exists"
-        }
+        Write-Verbose "Checking for AD Group : $($Node.EntitledGroup) and OU"
+
+        $Group = @"
+            `$OU = Get-ADOrganizationalUnit -Filter { Name -eq '$($Node.NodeName)Pool'} -ErrorAction SilentlyContinue
+            if ( -Not ( `$OU ) ) { 
+                Write-Output "Creating OU"
+
+                New-ADOrganizationalUnit -Name $($Node.NodeName)Pool -Path '$($Node.PoolParentOU)'
+            }
+            Else {
+                Write-Output "OU already Exists"
+            }
+
+            `$G = Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue
+            if ( -not ( `$G ) ) {
+                Write-Output "Creating Group"
+
+                New-ADGroup -Name $($Node.EntitledGroup) -GroupScope DomainLocal
+            }
+            Else {
+                Write-Output "Group already exists"
+            }
 "@
 
-        $Result = Invoke-VMScript -VM $NOde.DomainController -GuestCredential $DomainAdmin -ScriptText $Group
+            $Result = Invoke-VMScript -VM $NOde.DomainController -GuestCredential $DomainAdmin -ScriptText $Group
 
-        Write-Verbose $Result
-    #}
+            Write-Verbose $Result
+        #}
 
 
-    # ----- Create Folder for Linked Clones
-    if ( -Not ( Get-Folder -Name $Node.PoolVMFolder ) ) {
-        Write-Verbose Creating Folder
+        # ----- Create Folder for Linked Clones
+        if ( -Not ( Get-Folder -Name $Node.PoolVMFolder ) ) {
+            Write-Verbose Creating Folder
 
-        New-Folder -Name $Node.PoolVMFolder -Location VDI
+            New-Folder -Name $Node.PoolVMFolder -Location VDI
 
-    }
-    Else {
-        Write-Verbose "Folder Already Exists"
-    }
+        }
+        Else {
+            Write-Verbose "Folder Already Exists"
+        }
 
-    if ( $Node.ResourcePool -eq 'Resources' ) {
-        Write-Verbose 'Default Pool'
+        if ( $Node.ResourcePool -eq 'Resources' ) {
+            Write-Verbose 'Default Pool'
 
-        $Node.ResourcePool = $Node.ESXHost
-    }
+            $Node.ResourcePool = $Node.ESXHost
+        }
 
-    Write-Verbose "Checking if Pool exists : $($Node.NodeName)"
-
-    if ( -Not (Get-HVPool -PoolName $Node.NodeName -ErrorAction SilentlyContinue ) ) {
         Write-Verbose "Creating Pool"
 
         New-HVPool -LinkedClone `
