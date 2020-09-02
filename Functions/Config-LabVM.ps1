@@ -8,7 +8,7 @@
     [CmdletBinding()]
     Param (
         [Parameter (Mandatory = $True) ]
-        [String]$ConfigData,
+        [System.Collections.Hashtable]$ConfigData,
 
   #       # ----- DSC Mofs
   #      [Parameter (Mandatory = $True) ]
@@ -81,6 +81,8 @@
  #       $ExceptionType = $_.Exception.GetType().Fullname
  #       Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
  #   }
+
+    Write-Verbose $($ConfigData.AllNodes | Out-String )
 
    Try {
    # ----- Create the VM. 

@@ -5,15 +5,13 @@ configuration New-ViewMasterVM
     (                     
         [PSCredential]$LocalAdmin,
         
-        [PSCredential]$ShareDriveCred    
+        [PSCredential]$ShareDriveCred   
     )             
  
 
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
     Import-DscResource -ModuleName ComputerManagementDSC  
     Import-DSCResource -moduleName NetworkingDSC
-    Import-DSCResource -ModuleName xTimeZone
-    Import-DscResource -ModuleName xSystemSecurity
 
     Node $AllNodes.Where{$_.Role -eq "MasterImage"}.Nodename             
     { 
@@ -25,7 +23,7 @@ configuration New-ViewMasterVM
             Address = $Node.DNSServer
         }
 
-        xTimeZone EST {
+        TimeZone EST {
             IsSingleInstance = 'Yes'
             TimeZone = 'Eastern Standard Time'
         }
@@ -42,7 +40,7 @@ configuration New-ViewMasterVM
             SuppressRestart = $True
         }
 
-        xComputer SetName { 
+        Computer SetName { 
             Name = $Node.NodeName 
         }
 
@@ -64,9 +62,10 @@ configuration New-ViewMasterVM
 
                     $MapDrive | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
             }
-            DependsOn = [PowerShellExecutionPolicy]'ExecutionPolicy'
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
         }
 
+        # ----- Remove Hi wizard
         Registry Hi {
             Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
             ValueName = 'EnableFirstLogonAnimation'
@@ -92,7 +91,7 @@ configuration New-ViewMasterVM
             ProductId   = "0C94FB1A-6358-47FC-A3AE-3CA4F6C72C5E"
             Arguments   = '/s /v "/qn /l c:\temp\viewagentinstall.log VDM_VC_MANAGED_AGENT=1"'
             PSDSCRunAsCredential = $LocalAdmin
-            DependsOn   = '[xComputer]SetName'
+            DependsOn   = '[Computer]SetName'
 
         }
 

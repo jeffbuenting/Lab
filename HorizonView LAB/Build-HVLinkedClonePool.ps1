@@ -100,7 +100,6 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
         New-HVPool -LinkedClone `
             -PoolName $Node.NodeName `
             -UserAssignment FLOATING `
-            -GlobalEntitlement $Node.EntitledGroup `
             -ParentVM $MasterImageVM.Name `
             -SnapshotVM $SnapShot.name `
             -VmFolder $Node.PoolVMFolder `
@@ -123,7 +122,7 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
             -deleteOrRefreshMachineAfterLogoff DELETE `
             -RedirectWindowsProfile $false
 
-    #    Set-HVPool -PoolName $Node.NodeName -globalEntitlement $Node.EntitledGroup -Verbose
+        New-HVEntitlement -ResourceName $Node.Nodename -User $Node.EntitledGroup -Type Group
 
     }
     Else {

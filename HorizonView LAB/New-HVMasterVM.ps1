@@ -12,7 +12,7 @@ param (
     [PSCredential]$LocalAdmin,
 
     [Parameter (Mandatory = $True) ]
-    [PSCredential]$SharedDriveCred,
+    [PSCredential]$ShareDriveCred,
 
     [int]$Timeout = '900'
 )
@@ -24,21 +24,18 @@ Try {
     Write-Verbose "Dot sourcing scripts"
 
     # ----- Load the Config Data
-    Write-Verbose $DSCConfig
     . "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
 
     # ----- Create the Config
-    Write-Verbose $DSCVMScript
     . "$PSScriptRoot\DSCConfigs\New-ViewMasterVM.ps1"
 
     # ----- Dot source LCM config (same for all scripts)
-    Write-Verbose $LCMConfig
     . "$((Get-item -Path 'C:\Scripts\Lab\HorizonView LAB').Parent.FullName)\DSCConfigs\LCMConfig.ps1" `
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    Throw "NEw-HVMasterVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
 
@@ -54,14 +51,14 @@ try {
     Write-Verbose "$Filename MOF"
     New-ViewMasterVM -ConfigurationData $ConfigData `
         -LocalAdmin $LocalAdmin `
-        -SharedDriveCred $SharedDriveCred `
+        -SharedriveCred $ShareDriveCred `
         -OutputPath $MOFPath `
         -ErrorAction Stop | Write-Verbose
 }
 Catch {
     $ExceptionMessage = $_.Exception.Message
     $ExceptionType = $_.Exception.GetType().Fullname
-    Throw "Config-LabVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    Throw "NEw-HVMasterVM : There was a problem building the MOF.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
 
@@ -71,7 +68,7 @@ $DSCConfig = "$PSScriptRoot\DSCConfigs\Config_ViewMasterVM.ps1"
 
 $MasterImageVM = Config-LabVM -ConfigData $ConfigData `
     -DSCModulePath $DSCModulePath `
-    -DSCResource 'NetworkingDSC','xSystemSecurity','xtimezone','ComputerManagementDSC' `
+    -DSCResource 'NetworkingDSC','ComputerManagementDSC' `
     -LocalAdmin $LocalAdmin `
     -Timeout 1900 `
     -Verbose
