@@ -50,19 +50,23 @@ configuration New-ViewMasterVM
             ExecutionPolicy      = 'Unrestricted'
         }
 
+        File Scripts {
+            Ensure = 'Present'
+            Type = 'Directory'
+            DestinationPath = 'c:\Scripts'
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+
         Script SetupScript {
             GetScript = { @{ Result = (Get-Content C:\scripts\Set-VDIDesktop.ps1) } }
             TestScript = { Test-Path "C:\scripts\Set-VDIDesktop.ps1" }
             SetScript = {
-                $MapDrive = @"
-                    $Cred = New-Object System.Management.Automation.PSCredential ($ShareDriveCred.UserName, $(ConvertTo-SecureString $ShareDriveCred.GetNetworkCredentials().Password -AsPlainText -Force))
-
-                    New-PSDrive -Name p -PSProvider FileSystem -Root $Path -Credential $Cred -Persist -ErrorAction stop
-"@
-
-                    $MapDrive | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
+              #  "`$Cred = New-Object System.Management.Automation.PSCredential ('$($ShareDriveCred.UserName)', `$(ConvertTo-SecureString '$($ShareDriveCred.GetNetworkCredential().Password)' -AsPlainText -Force))" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
+              "`$Cred = New-Object System.Management.Automation.PSCredential" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
+              #  "New-PSDrive -Name P -PSProvider FileSystem -Root \\192.168.1.23\Stuff -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
             }
-            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+            DependsOn = '[File]Scripts'
         }
 
         # ----- Remove Hi wizard
@@ -77,7 +81,7 @@ configuration New-ViewMasterVM
         Registry RunOnce {
             Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
             ValueName = 'Set-VDIDesktop'
-            ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 '
+            ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 -Noexit'
             ValueType = 'String' 
             Ensure = 'Present'
         }

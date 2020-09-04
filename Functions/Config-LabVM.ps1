@@ -119,14 +119,14 @@
         $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
     }
 
-    Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
-    $Seconds = 300
-    $T = 0
-    while ( $T -le $Seconds ) { 
-        Write-Verbose "Waiting for VM to 'Settle'...$T -le $Seconds"
-        Start-Sleep -Seconds 5
-        $T += 5
-    }
+#    Write-verbose "We appear to be going too fast and the VM has not settled.  Pausing to let it."
+#    $Seconds = 300
+#    $T = 0
+#    while ( $T -le $Seconds ) { 
+#        Write-Verbose "Waiting for VM to 'Settle'...$T -le $Seconds"
+#        Start-Sleep -Seconds 5
+#        $T += 5
+#    }
 
     $VM = Get-VM -Name $Configdata.AllNodes.NodeName -ErrorAction Stop
 
