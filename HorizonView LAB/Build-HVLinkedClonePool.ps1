@@ -48,7 +48,7 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
         # ----- Create AD Groups that are Entitled to use the VDI Pool
         #Foreach ( $E in $EntitledGroup ) {
 
-        Write-Verbose "Checking for AD Group : $($Node.EntitledGroup) and OU"
+        Write-Verbose "Checking for AD Group : $($Node.EntitledGroup) and OU : $($Node.NodeName)Pool"
 
         $Group = @"
             `$OU = Get-ADOrganizationalUnit -Filter { Name -eq '$($Node.NodeName)Pool'} -ErrorAction SilentlyContinue
@@ -61,11 +61,12 @@ Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
                 Write-Output "OU already Exists"
             }
 
-            `$G = Get-ADGroup -Identity $($Node.EntitledGroup) -ErrorAction SilentlyContinue
+            `$GN = '$(($Node.EntitledGroup -split '\\')[1])'
+            `$G = Get-ADGroup -Identity `$GN -ErrorAction SilentlyContinue
             if ( -not ( `$G ) ) {
                 Write-Output "Creating Group"
 
-                New-ADGroup -Name $($Node.EntitledGroup) -GroupScope DomainLocal
+                New-ADGroup -Name `$GN -GroupScope DomainLocal
             }
             Else {
                 Write-Output "Group already exists"

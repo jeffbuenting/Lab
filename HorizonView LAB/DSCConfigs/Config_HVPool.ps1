@@ -17,7 +17,7 @@
             DomainNetBiosName = 'kings-wood'
             PoolParentOU = 'OU=VDI,DC=kings-wood,DC=local'
             PoolContainer = "OU=SurfPPool,OU=VDI"
-            EntitledGroup = "SurfP_Users"
+            EntitledGroup = "kings-wood\SurfP_Users"
             RetryCount = 20              
             RetryIntervalSec = 30            
             PSDscAllowDomainUser = $True

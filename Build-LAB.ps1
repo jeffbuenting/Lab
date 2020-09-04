@@ -121,7 +121,7 @@ Catch {
 
 # ----- Create Master Images
 
-$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -SHareDriveCred $ShareDriveCred -Verbose
+#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -SHareDriveCred $ShareDriveCred -Verbose
 
 # ----- Create linked clone pool
 Connect-HVServer -Server $ViewServer -Credential $ViewAdmin
