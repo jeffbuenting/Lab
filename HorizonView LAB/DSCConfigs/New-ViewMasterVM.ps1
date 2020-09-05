@@ -57,14 +57,18 @@ configuration New-ViewMasterVM
             DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
         }
 
+        # ----- Because I can't use an expression in a Using stement
+        $UName = $ShareDriveCred.UserName
+        $PW = $ShareDriveCred.GetNetworkCredential().Password
+        $Path = $Node.Share
 
         Script SetupScript {
             GetScript = { @{ Result = (Get-Content C:\scripts\Set-VDIDesktop.ps1) } }
             TestScript = { Test-Path "C:\scripts\Set-VDIDesktop.ps1" }
             SetScript = {
-              #  "`$Cred = New-Object System.Management.Automation.PSCredential ('$($ShareDriveCred.UserName)', `$(ConvertTo-SecureString '$($ShareDriveCred.GetNetworkCredential().Password)' -AsPlainText -Force))" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
-              "`$Cred = New-Object System.Management.Automation.PSCredential" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
-              #  "New-PSDrive -Name P -PSProvider FileSystem -Root \\192.168.1.23\Stuff -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
+              "`$Cred = New-Object System.Management.Automation.PSCredential ('$Using:UName', `$(ConvertTo-SecureString $($Using:PW) -AsPlainText -Force))" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
+           #   "$Using:Path|" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
+              "New-PSDrive -Name P -PSProvider FileSystem -Root $($Using:Path) -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
             }
             DependsOn = '[File]Scripts'
         }

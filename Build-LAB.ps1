@@ -42,8 +42,8 @@ $ViewSQLAcct = New-Object System.Management.Automation.PSCredential ('ViewConnec
 
 $ShareDriveCred = New-Object System.Management.Automation.PSCredential ('Jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
