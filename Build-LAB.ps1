@@ -14,6 +14,7 @@ $PoolOSCustomization = 'WIN 10 VDI'
 
 $DomainController = 'KW-DC1'
 $DomainNetBiosName = 'kings-wood'
+$PoolContainer = 'OU=SurfPPool,OU=VDI'
 
 
 
@@ -39,8 +40,10 @@ $ComposerViewAcct = New-Object System.Management.Automation.PSCredential ('kings
 $ViewAdmin = $DomainAdmin
 $ViewSQLAcct = New-Object System.Management.Automation.PSCredential ('ViewConnection', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+$ShareDriveCred = New-Object System.Management.Automation.PSCredential ('Jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+
+#$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
@@ -118,22 +121,10 @@ Catch {
 
 # ----- Create Master Images
 
-#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -Verbose
+#$MasterImage = . "$PSScriptRoot\HorizonView LAB\New-HVMasterVM.ps1" -DSCModulePath $DSCModulePath -LocalAdmin $LocalAdmin -SHareDriveCred $ShareDriveCred -Verbose
 
 # ----- Create linked clone pool
+
 Connect-HVServer -Server $ViewServer -Credential $ViewAdmin
 
-. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -MasterImageVM $MasterImage `
-    -DomainController $DomainController `
-    -DomainAdmin $DomainAdmin `
-    -DomainNetBiosName $DomainNetBiosName `
-    -Name $PoolName `
-    -VMFolder $PoolVMFolder `
-    -HostOrCluster $ESXHost `
-    -DataStore $PoolDataStore `
-    -NamingPattern $PoolNamePattern `
-    -MIN $PoolMin `
-    -Max $PoolMax `
-    -PoolOSCustomization $PoolOSCustomization `
-    -EntitledGroup "$($PoolName)_Users" `
-    -Verbose
+. "$PSScriptRoot\HorizonView LAB\Build-HVLinkedClonePool.ps1" -DSCConfig "$PSScriptRoot\HorizonView LAB\dscConfigs\Config_HVPool.ps1" -DomainAdmin $DomainAdmin -Verbose

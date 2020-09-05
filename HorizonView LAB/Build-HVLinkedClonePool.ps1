@@ -6,127 +6,128 @@
 [CmdletBinding()]
 Param (
     [Parameter (Mandatory = $True) ]
-    [VMware.VimAutomation.ViCore.Impl.V1.VM.UniversalVirtualMachineImpl]$MasterImageVM,
+    [String]$DSCConfig,
 
     [Parameter (Mandatory = $True) ]
-    [String]$DomainController,
-
-    [Parameter (Mandatory = $True) ]
-    [PSCredential]$DomainAdmin,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$DomainNetBiosName,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$ADContainer,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$Name,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$VMFolder,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$HostOrCluster,
-
-    [String]$ResourcePool = 'Resources',
-
-    [Parameter (Mandatory = $True) ]
-    [String]$DataStore,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$NamingPattern,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$Min,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$Max,
-
-    [String]$Spare = 1,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$PoolOSCustomization,
-
-    [Parameter (Mandatory = $True) ]
-    [String]$EntitledGroup
-
-
+    [PSCredential]$DomainAdmin
 )
 
-# ----- Create Snapshot for Pool
+Try {
+        # ----- Dot source configs and DSC scripts
+        Write-Verbose "Dot sourcing scripts"
 
-$SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
+        # ----- Load the Config Data
+        Write-Verbose $DSCConfig
+        . $DSCConfig
 
-# ----- Create AD Groups that are Entitled to use the VDI Pool
-#Foreach ( $E in $EntitledGroup ) {
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        $ExceptionType = $_.Exception.GetType().Fullname
+        Throw "Config-LabVM : Error dot sourcing DSC files.`n`n     $ExceptionMessage`n`n $ExceptionType"
+    }
 
-    $Group = @"
-        if ( Get-ADGroup -Identity $EntitledGroup -ErrorAction SilentlyContinue ) {
-            Write-Output "Creating Group"
+Foreach ( $Node in $ConfigData.AllNodes | where Role -eq 'HVPool' ) {
+    Write-Verbose "Configuring Pool $($Node.Nodename)"
 
-            New-ADGroup -Name $EntitledGroup
+    if ( -Not (Get-HVPool -PoolName $Node.NodeName -ErrorAction SilentlyContinue ) ) {
+        Write-Verbose "Pool does not exist"
+
+        # ----- Create Snapshot for Pool
+        Try { 
+            $MasterImageVM = Get-VM -Name $Node.MasterImage -ErrorAction Stop 
+
+            $SnapShot = $MasterImageVM | New-Snapshot -Name "$($MasterImageVM.Name)-$(Get-Date -Format yyyyMMMdd-HHmm)"
         }
-        Else {
-            Write-Output "Group already exists"
+        Catch {
+            $ExceptionMessage = $_.Exception.Message
+            $ExceptionType = $_.Exception.GetType().Fullname
+            Throw "Build-HVLinkedClonePoole : Problem creating Master Image Snapshot.`n`n     $ExceptionMessage`n`n $ExceptionType"
         }
+
+        # ----- Create AD Groups that are Entitled to use the VDI Pool
+        #Foreach ( $E in $EntitledGroup ) {
+
+        Write-Verbose "Checking for AD Group : $($Node.EntitledGroup) and OU : $($Node.NodeName)Pool"
+
+        $Group = @"
+            `$OU = Get-ADOrganizationalUnit -Filter { Name -eq '$($Node.NodeName)Pool'} -ErrorAction SilentlyContinue
+            if ( -Not ( `$OU ) ) { 
+                Write-Output "Creating OU"
+
+                New-ADOrganizationalUnit -Name $($Node.NodeName)Pool -Path '$($Node.PoolParentOU)'
+            }
+            Else {
+                Write-Output "OU already Exists"
+            }
+
+            `$GN = '$(($Node.EntitledGroup -split '\\')[1])'
+            `$G = Get-ADGroup -Identity `$GN -ErrorAction SilentlyContinue
+            if ( -not ( `$G ) ) {
+                Write-Output "Creating Group"
+
+                New-ADGroup -Name `$GN -GroupScope DomainLocal
+            }
+            Else {
+                Write-Output "Group already exists"
+            }
 "@
 
-    Invoke-VMScript -VM $DomainController -GuestCredential $DomainAdmin -ScriptText $Group
-#}
+            $Result = Invoke-VMScript -VM $NOde.DomainController -GuestCredential $DomainAdmin -ScriptText $Group
+
+            Write-Verbose $Result
+        #}
 
 
-# ----- Create Folder for Linked Clones
-if ( -Not ( Get-Folder -Name $VMFolder ) ) {
-    Write-Verbose Creating Folder
+        # ----- Create Folder for Linked Clones
+        if ( -Not ( Get-Folder -Name $Node.PoolVMFolder ) ) {
+            Write-Verbose Creating Folder
 
-    New-Folder -Name $VMFolder -Location VDI
+            New-Folder -Name $Node.PoolVMFolder 
 
-}
-Else {
-    Write-Verbose "Folder Already Exists"
-}
+        }
+        Else {
+            Write-Verbose "Folder Already Exists"
+        }
 
-if ( $ResourcePool -eq 'Resources' ) {
-    Write-Verbose 'Default Pool'
+        if ( $Node.ResourcePool -eq 'Resources' ) {
+            Write-Verbose 'Default Pool'
 
-    $ResourcePool = $HostOrCluster
-}
+            $Node.ResourcePool = $Node.ESXHost
+        }
 
-Write-Verbose "Checking if Pool exists : $Name"
+        Write-Verbose "Creating Pool"
 
-if ( -Not (Get-HVPool -PoolName $Name -ErrorAction SilentlyContinue ) ) {
-    Write-Verbose "Creating Pool"
+        New-HVPool -LinkedClone `
+            -PoolName $Node.NodeName `
+            -UserAssignment FLOATING `
+            -ParentVM $MasterImageVM.Name `
+            -SnapshotVM $SnapShot.name `
+            -VmFolder $Node.PoolVMFolder `
+            -HostOrCluster $Node.ESXHost `
+            -ResourcePool $Node.ResourcePool `
+            -Datastores $Node.PoolDataStore `
+            -NamingMethod PATTERN `
+            -PoolDisplayName $Node.PoolName `
+            -EnableProvisioning $True `
+            -NamingPattern $Node.PoolNamePattern `
+            -MinReady $Node.PoolMin `
+            -MaximumCount $Node.PoolMax `
+            -SpareCount $Node.PoolSpare `
+            -ProvisioningTime UP_FRONT `
+            -CustType   QUICK_PREP `
+            -NetBiosName $Node.DomainNetBiosName `
+            -DomainAdmin $DomainAdmin.UserName `
+            -AdContainer $Node.PoolContainer `
+            -enableHTMLAccess $True `
+            -deleteOrRefreshMachineAfterLogoff DELETE `
+            -RedirectWindowsProfile $false
 
-    New-HVPool -LinkedClone `
-        -PoolName $Name `
-        -UserAssignment FLOATING `
-        -GlobalEntitlement $EntitledGroup `
-        -ParentVM $MasterImageVM.Name `
-        -SnapshotVM $SnapShot.name `
-        -VmFolder $VMFolder `
-        -HostOrCluster $HostOrCluster `
-        -ResourcePool $ResourcePool `
-        -Datastores $DataStore `
-        -NamingMethod PATTERN `
-        -PoolDisplayName $Name `
-        -Description $Name `
-        -EnableProvisioning $True `
-        -NamingPattern $NamingPattern `
-        -MinReady $Min `
-        -MaximumCount $Max `
-        -SpareCount $Spare `
-        -ProvisioningTime UP_FRONT `
-        -SysPrepName $PoolOSCustomization `
-        -CustType QUICK_PREP `
-        -NetBiosName $DomainNetbios `
-        -DomainAdmin $DomainAdmin.UserName `
-        -AdContainer $ADContainer `
-        -enableHTMLAccess `
-        -deleteOrRefreshMachineAfterLogoff DELETE `
-        -RedirectWindowsProfile $false
-}
-Else {
-    Write-Verbose "Pool already exists"
+        New-HVEntitlement -ResourceName $Node.Nodename -User $Node.EntitledGroup -Type Group
+
+    }
+    Else {
+        Write-Verbose "Pool already exists"
+    }
 }
 

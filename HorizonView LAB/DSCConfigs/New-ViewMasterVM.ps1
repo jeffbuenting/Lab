@@ -3,15 +3,15 @@ configuration New-ViewMasterVM
 {             
   param             
     (                     
-        [PSCredential]$LocalAdmin      
+        [PSCredential]$LocalAdmin,
+        
+        [PSCredential]$ShareDriveCred   
     )             
  
 
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration' 
-    Import-DscResource -ModuleName xComputerManagement  
+    Import-DscResource -ModuleName ComputerManagementDSC  
     Import-DSCResource -moduleName NetworkingDSC
-    Import-DSCResource -ModuleName xTimeZone
-    Import-DscResource -ModuleName xSystemSecurity
 
     Node $AllNodes.Where{$_.Role -eq "MasterImage"}.Nodename             
     { 
@@ -23,27 +23,76 @@ configuration New-ViewMasterVM
             Address = $Node.DNSServer
         }
 
-        xTimeZone EST {
+        TimeZone EST {
             IsSingleInstance = 'Yes'
             TimeZone = 'Eastern Standard Time'
         }
   
-        xIEEsc IESecAdmin {
-            UserRole = 'Administrators'
-            IsEnabled = $False
+        IEEnhancedSecurityConfiguration IESecAdmin {
+            Role = 'Administrators'
+            Enabled = $False
+            SuppressRestart = $True
         }
 
-        xIEEsc IESecUsers {
-            UserRole = 'Users'
-            IsEnabled = $False
+        IEEnhancedSecurityConfiguration IESecUsers {
+            Role = 'Users'
+            Enabled = $False
+            SuppressRestart = $True
         }
 
-
-        xComputer SetName { 
+        Computer SetName { 
             Name = $Node.NodeName 
         }
 
-        
+        PowerShellExecutionPolicy ExecutionPolicy
+        {
+            ExecutionPolicyScope = 'LocalMachine'
+            ExecutionPolicy      = 'Unrestricted'
+        }
+
+        File Scripts {
+            Ensure = 'Present'
+            Type = 'Directory'
+            DestinationPath = 'c:\Scripts'
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+ #      # ----- Because I can't use an expression in a Using stement
+ #      $UName = $ShareDriveCred.UserName
+ #      $PW = $ShareDriveCred.GetNetworkCredential().Password
+ #      $Path = $Node.Share
+
+        Script MappDrive {
+            GetScript = { @{ Result = (Get-Content C:\scripts\New-VDIMappedDrive.ps1) } }
+            TestScript = { Test-Path "C:\scripts\New-VDIMappedDrive.ps1" }
+            SetScript = {
+                "Param (" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1
+                "     [String]`$UserName," | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     [String]`$Password," | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     [String]`$Path" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                ")" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "`$Cred = New-Object System.Management.Automation.PSCredential ('`$UserName', `$(ConvertTo-SecureString `$Password -AsPlainText -Force))" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -append
+                "New-PSDrive -Name P -PSProvider FileSystem -Root `$Path -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+            }
+            DependsOn = '[File]Scripts'
+        }
+
+        # ----- Remove Hi wizard
+        Registry Hi {
+            Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+            ValueName = 'EnableFirstLogonAnimation'
+            ValueData = 0
+            ValueType = 'Dword' 
+            Ensure = 'Absent'
+        }
+
+   #     Registry RunOnce {
+   #         Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
+   #         ValueName = 'Set-VDIDesktop'
+   #         ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 -Noexit'
+   #         ValueType = 'String' 
+   #         Ensure = 'Present'
+   #     }
 
         Package HorizonView {
             Ensure      = "Present"  
@@ -54,7 +103,7 @@ configuration New-ViewMasterVM
             ProductId   = "0C94FB1A-6358-47FC-A3AE-3CA4F6C72C5E"
             Arguments   = '/s /v "/qn /l c:\temp\viewagentinstall.log VDM_VC_MANAGED_AGENT=1"'
             PSDSCRunAsCredential = $LocalAdmin
-            DependsOn   = '[xComputer]SetName'
+            DependsOn   = '[Computer]SetName'
 
         }
 

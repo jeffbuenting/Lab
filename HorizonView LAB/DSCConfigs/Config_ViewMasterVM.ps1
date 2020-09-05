@@ -19,9 +19,8 @@
             PSDscAllowDomainUser = $True
             PsDscAllowPlainTextPassword = $true  
             ESXHost = '192.168.1.15'    
-            HorizonAgent = '\\192.168.1.166\Source\VMWare\VMware-Horizon-Agent-x86_64-7.12.0-15805436.exe'
-
-
+            HorizonAgent = '\\192.168.1.166\Source\VMWare\VMware-Horizon-Agent-x86_64-7.12.0-15805436.exe'  
+            Share = '\\192.168.1.23\Stuff'
         }            
     )             
 }  
