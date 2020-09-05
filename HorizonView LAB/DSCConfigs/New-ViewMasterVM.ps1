@@ -57,18 +57,22 @@ configuration New-ViewMasterVM
             DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
         }
 
-        # ----- Because I can't use an expression in a Using stement
-        $UName = $ShareDriveCred.UserName
-        $PW = $ShareDriveCred.GetNetworkCredential().Password
-        $Path = $Node.Share
+ #      # ----- Because I can't use an expression in a Using stement
+ #      $UName = $ShareDriveCred.UserName
+ #      $PW = $ShareDriveCred.GetNetworkCredential().Password
+ #      $Path = $Node.Share
 
-        Script SetupScript {
-            GetScript = { @{ Result = (Get-Content C:\scripts\Set-VDIDesktop.ps1) } }
-            TestScript = { Test-Path "C:\scripts\Set-VDIDesktop.ps1" }
+        Script MappDrive {
+            GetScript = { @{ Result = (Get-Content C:\scripts\New-VDIMappedDrive.ps1) } }
+            TestScript = { Test-Path "C:\scripts\New-VDIMappedDrive.ps1" }
             SetScript = {
-              "`$Cred = New-Object System.Management.Automation.PSCredential ('$Using:UName', `$(ConvertTo-SecureString $($Using:PW) -AsPlainText -Force))" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1
-           #   "$Using:Path|" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
-              "New-PSDrive -Name P -PSProvider FileSystem -Root $($Using:Path) -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\Set-VDIDesktop.ps1 -Append
+                "Param (" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1
+                "     [String]`$UserName," | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     [String]`$Password," | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     [String]`$Path" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                ")" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "`$Cred = New-Object System.Management.Automation.PSCredential ('`$UserName', `$(ConvertTo-SecureString `$Password -AsPlainText -Force))" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -append
+                "New-PSDrive -Name P -PSProvider FileSystem -Root `$Path -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
             }
             DependsOn = '[File]Scripts'
         }
@@ -82,13 +86,13 @@ configuration New-ViewMasterVM
             Ensure = 'Absent'
         }
 
-        Registry RunOnce {
-            Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
-            ValueName = 'Set-VDIDesktop'
-            ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 -Noexit'
-            ValueType = 'String' 
-            Ensure = 'Present'
-        }
+   #     Registry RunOnce {
+   #         Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
+   #         ValueName = 'Set-VDIDesktop'
+   #         ValueData = 'Powershell.exe -command c:\scripts\Set-VDIDesktop.ps1 -Noexit'
+   #         ValueType = 'String' 
+   #         Ensure = 'Present'
+   #     }
 
         Package HorizonView {
             Ensure      = "Present"  
