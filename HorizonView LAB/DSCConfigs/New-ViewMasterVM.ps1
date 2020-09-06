@@ -71,8 +71,14 @@ configuration New-ViewMasterVM
                 "     [String]`$Password," | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
                 "     [String]`$Path" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
                 ")" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
-                "`$Cred = New-Object System.Management.Automation.PSCredential ('`$UserName', `$(ConvertTo-SecureString `$Password -AsPlainText -Force))" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -append
-                "New-PSDrive -Name P -PSProvider FileSystem -Root `$Path -Credential `$Cred -Persist -ErrorAction stop" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                """Begin mapping drive to $Path"" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.log" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "`$Cred = New-Object System.Management.Automation.PSCredential (""`$UserName"", `$(ConvertTo-SecureString `$Password -AsPlainText -Force))" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -append
+                "try {" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     New-PSDrive -Name P -PSProvider FileSystem -Root `$Path -Credential `$Cred -Persist -Scope Global -ErrorAction stop" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "}" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "Catch {" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "     ""Error : $($_.Exception.Message)"" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.log" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
+                "}" | Out-File -FilePath c:\scripts\New-VDIMappedDrive.ps1 -Append
             }
             DependsOn = '[File]Scripts'
         }
@@ -83,7 +89,7 @@ configuration New-ViewMasterVM
             ValueName = 'EnableFirstLogonAnimation'
             ValueData = 0
             ValueType = 'Dword' 
-            Ensure = 'Absent'
+            Ensure = 'Present'
         }
 
    #     Registry RunOnce {
