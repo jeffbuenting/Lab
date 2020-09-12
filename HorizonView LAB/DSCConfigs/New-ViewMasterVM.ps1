@@ -137,6 +137,36 @@ configuration New-ViewMasterVM
 
         }
 
+
+        # ----- VMWare OSOT
+        File VOSOT {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = "$($Node.Source)\VMWare\VMWareOSOT"
+            DestinationPath = 'c:\Optimize\VMwareOSOT'
+            Recurse = $True
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        # ----- VOSOT Template
+        File VOSOTTemplate {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = $Node.VOSOTTemplate
+            DestinationPath = 'c:\Optimize\VMwareOSOT'
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        Script RunVOSOT {
+            GetScript = { @{ Result = $True } }
+            TestScript = { $False }
+            SetScript = {
+                Start-Process -FilePath c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe -ArgumentList "-o -t c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe.config c:\Optimize\VMwareOSOT\$($Node.VOSOTTemplate)" -passthru -wait
+            }
+            DependsOn = '[File]VOSOTTemplate','[File]VOSOT'
+        }
+
+
         
   #      xUAC EnableUAC {
   #          Setting = 'AlwaysNotify'
