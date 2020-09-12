@@ -92,6 +92,30 @@ configuration New-ViewMasterVM
             Ensure = 'Present'
         }
 
+        # ----- Optimize Image
+        # https://docs.microsoft.com/en-us/windows-server/remote/remote-desktop-services/rds_vdi-recommendations-1909
+        # https://github.com/The-Virtual-Desktop-Team/Virtual-Desktop-Optimization-Tool
+
+        File OptimzeCode {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = "$($Node.Source)\Virtual-Desktop-Optimization-Tool-master"
+            DestinationPath = 'c:\Optimize'
+            Recurse = $True
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        Script MappDrive {
+            GetScript = { @{ Result = (Get-Content c:\optimized\Win10_VirtualDesktop_Optimize.ps1) } }
+            TestScript = { $False }
+            SetScript = {
+                .\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion 1909 -Verbose
+            }
+            DependsOn = '[File]OptimzeCode'
+        }
+
+
+
    #     Registry RunOnce {
    #         Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
    #         ValueName = 'Set-VDIDesktop'
