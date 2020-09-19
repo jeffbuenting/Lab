@@ -137,6 +137,14 @@ configuration New-ViewMasterVM
 
         }
 
+        Service VMWareLogonMonitor
+        {
+            Name        = "vmlm"
+            StartupType = "Automatic"
+            State       = "Running"
+            DependsOn   = '[Package]HorizonView'
+        }
+
 
         # ----- VMWare OSOT
         File VOSOT {
@@ -161,7 +169,7 @@ configuration New-ViewMasterVM
             GetScript = { @{ Result = $True } }
             TestScript = { $False }
             SetScript = {
-                Start-Process -FilePath c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe -ArgumentList "-o -t c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe.config c:\Optimize\VMwareOSOT\$($Node.VOSOTTemplate)" -passthru -wait
+                Start-Process -FilePath c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe -ArgumentList "-v -o -t c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe.config c:\Optimize\VMwareOSOT\$($Node.VOSOTTemplate)" -passthru -wait -NoNewWindow
             }
             DependsOn = '[File]VOSOTTemplate','[File]VOSOT'
         }
