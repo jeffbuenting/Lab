@@ -83,6 +83,15 @@ configuration New-ViewMasterVM
             DependsOn = '[File]Scripts'
         }
 
+        # ----- Move-Shortcut script
+        File Scripts {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = $Node.MoveShortcutScript
+            DestinationPath = 'c:\Scripts'
+            DependsOn = '[File]Scripts'
+        }
+
         # ----- Remove Hi wizard
         Registry Hi {
             Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -91,6 +100,30 @@ configuration New-ViewMasterVM
             ValueType = 'Dword' 
             Ensure = 'Present'
         }
+
+        # ----- Optimize Image
+        # https://docs.microsoft.com/en-us/windows-server/remote/remote-desktop-services/rds_vdi-recommendations-1909
+        # https://github.com/The-Virtual-Desktop-Team/Virtual-Desktop-Optimization-Tool
+
+        File OptimzeCode {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = "$($Node.Source)\Virtual-Desktop-Optimization-Tool-master"
+            DestinationPath = 'c:\Optimize'
+            Recurse = $True
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        Script MappDrive {
+            GetScript = { @{ Result = (Get-Content c:\optimized\Win10_VirtualDesktop_Optimize.ps1) } }
+            TestScript = { $False }
+            SetScript = {
+                .\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion 1909 -Verbose
+            }
+            DependsOn = '[File]OptimzeCode'
+        }
+
+
 
    #     Registry RunOnce {
    #         Key = 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run'
@@ -112,6 +145,44 @@ configuration New-ViewMasterVM
             DependsOn   = '[Computer]SetName'
 
         }
+
+        Service VMWareLogonMonitor
+        {
+            Name        = "vmlm"
+            StartupType = "Automatic"
+            State       = "Running"
+            DependsOn   = '[Package]HorizonView'
+        }
+
+
+        # ----- VMWare OSOT
+        File VOSOT {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = "$($Node.Source)\VMWare\VMWareOSOT"
+            DestinationPath = 'c:\Optimize\VMwareOSOT'
+            Recurse = $True
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        # ----- VOSOT Template
+        File VOSOTTemplate {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = $Node.VOSOTTemplate
+            DestinationPath = 'c:\Optimize\VMwareOSOT'
+            DependsOn = '[PowerShellExecutionPolicy]ExecutionPolicy'
+        }
+
+        Script RunVOSOT {
+            GetScript = { @{ Result = $True } }
+            TestScript = { $False }
+            SetScript = {
+                Start-Process -FilePath c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe -ArgumentList "-v -o -t c:\Optimize\VMwareOSOT\VMwareOSOptimizationTool.exe.config c:\Optimize\VMwareOSOT\$($Node.VOSOTTemplate)" -passthru -wait -NoNewWindow
+            }
+            DependsOn = '[File]VOSOTTemplate','[File]VOSOT'
+        }
+
 
         
   #      xUAC EnableUAC {
