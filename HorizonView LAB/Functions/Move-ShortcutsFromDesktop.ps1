@@ -1,5 +1,3 @@
-﻿ 
-
         # ------------------------------------------------------------------------
         # Move-shortcutsfromdesktop
         #
@@ -7,6 +5,8 @@
         #-------------------------------------------------------------------------
 
         Param (
+      #      [String]$UserDesktop = "c:\temp",
+
             [String]$Destination = 'p:\links'
         )
 
@@ -14,11 +14,13 @@
         # Main
         #-------------------------------------------------------------------------
 
+
         $UserDesktop = "$Env:USERPROFILE\Desktop"
 
         write-Host "Processing $UserDesktop"
 
         Write-Output "does copy to path exist?"
+
         # ----- Check if the P: drive exists.  If not then do not process...
         if (  (Test-Path -Path $Destination)  -eq $False ) { exit }
 
@@ -35,13 +37,14 @@
 
         # ----- Move .lnk files
         Get-Item -path "$UserDesktop\*.url" | foreach {
-	        Write-Host "$Destination\$Date\$($_.Name)"
+	        Write-Verbose "$Destination\$Date\$($_.Name)"
 	        if ( Test-Path "$Destination\$Date\$($_.Name)" ) {
-        	#		Write-Host $_.name -ForegroundColor red
+        	#		Write-Verbose $_.name -ForegroundColor red
 			        $_ | Rename-Item -NewName "$($_.BaseName)($(Get-Random -Maximum 100))$($_.Extension)" -PassThru | Move-Item -Destination "$Destination\$Date"
 		        }
 		        else {
-        #			Write-Host $_.Name -ForegroundColor green
+        #			Write-Verbose $_.Name -ForegroundColor green
+          
 			        $_ | Move-Item -Destination "$Destination\$Date"
 	        }
         }

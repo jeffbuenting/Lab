@@ -83,6 +83,15 @@ configuration New-ViewMasterVM
             DependsOn = '[File]Scripts'
         }
 
+        # ----- Move-Shortcut script
+        File Scripts {
+            Ensure = 'Present'
+            Type = 'File'
+            SourcePath = $Node.MoveShortcutScript
+            DestinationPath = 'c:\Scripts'
+            DependsOn = '[File]Scripts'
+        }
+
         # ----- Remove Hi wizard
         Registry Hi {
             Key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
