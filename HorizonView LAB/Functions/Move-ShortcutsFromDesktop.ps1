@@ -1,4 +1,4 @@
-﻿# ------------------------------------------------------------------------
+        # ------------------------------------------------------------------------
         # Move-shortcutsfromdesktop
         #
         # moves the shortcuts on the desktop to the correct dated folder
@@ -14,7 +14,13 @@
         # Main
         #-------------------------------------------------------------------------
 
-        Write-Verbose "does copy to path exist?"
+
+        $UserDesktop = "$Env:USERPROFILE\Desktop"
+
+        write-Host "Processing $UserDesktop"
+
+        Write-Output "does copy to path exist?"
+
         # ----- Check if the P: drive exists.  If not then do not process...
         if (  (Test-Path -Path $Destination)  -eq $False ) { exit }
 
@@ -29,8 +35,6 @@
 		        md "$Destination\$Date"
         }
 
-        $UserDesktop = "$Env:USERPROFILE\Desktop"
-
         # ----- Move .lnk files
         Get-Item -path "$UserDesktop\*.url" | foreach {
 	        Write-Verbose "$Destination\$Date\$($_.Name)"
@@ -40,6 +44,7 @@
 		        }
 		        else {
         #			Write-Verbose $_.Name -ForegroundColor green
+          
 			        $_ | Move-Item -Destination "$Destination\$Date"
 	        }
         }
