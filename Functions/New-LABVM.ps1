@@ -144,9 +144,12 @@
                         # ----- Resource and Location are not required.  Need to account for this if someones environment does not use them.
                         if ( $ResourcePool -and -not $Location ) { $Location = $ResourcePool }
 
-
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
-
+                        if ( -Not $ResourcePool ) {
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Else {
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
                         Write-Verbose "waiting for new-vm to complete"
   
                         Write-Verbose "Task State = $($Task.State )"
@@ -185,9 +188,11 @@
             $VMNIC = Get-NetworkAdapter -VM $VM -ErrorAction Stop
 
             if ( $VMNIC.NetworkName -ne $PortGroup ) {
-                Write-verbose "Attaching NIC to correct network"
+                Write-verbose "Attaching NIC to correct network : $PortGroup"
 
-                Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup (Get-VirtualPortGroup -VirtualSwitch $VMSwitch -Name $PortGroup -ErrorAction Stop) -Confirm:$False -ErrorAction Stop
+                $VPortgroup = Get-VirtualPortGroup -VMHost $ESXHost -VirtualSwitch $VMSwitch -Name $PortGroup -ErrorAction Stop 
+
+                Get-NetworkAdapter -vm $VM -ErrorAction Stop | Set-NetworkAdapter -Portgroup $VPortgroup -Confirm:$False -ErrorAction Stop
                 $Reboot = $True
             }
             Else {
