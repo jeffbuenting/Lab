@@ -132,4 +132,4 @@ Catch {
 
 # ----- Thin app clean image
 
-. "$PSScriptroot\HorizonView LAB\Build-HVThinAppMachine.ps1" -DSCModulePath $DSCModulePath -localAdmin $LocalAdmin -Timeout 2000 -Verbose
+. "$PSScriptroot\HorizonView LAB\Build-HVThinAppMachine.ps1" -DSCModulePath $DSCModulePath -localAdmin $LocalAdmin -Timeout 3000 -Verbose

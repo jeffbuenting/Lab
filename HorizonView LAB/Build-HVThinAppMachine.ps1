@@ -55,7 +55,7 @@ Config-LabVM -ConfigData $ConfigData `
     -DSCModulePath $DSCModulePath `
     -DSCResource 'NetworkingDSC','ComputerManagementDSC' `
     -LocalAdmin $LocalAdmin `
-    -Timeout 1900 `
+    -Timeout $Timeout `
     -Verbose
 
 
