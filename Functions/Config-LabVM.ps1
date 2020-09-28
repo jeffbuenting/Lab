@@ -23,8 +23,8 @@
         [Parameter (Mandatory = $True) ]
         [PSCredential]$LocalAdmin,
 
-  #      [Parameter (Mandatory = $True) ]
-  #      [String]$MOFPath,
+        [Parameter (Mandatory = $True) ]
+        [String]$MOFPath,
         
         [Parameter (Mandatory = $True) ]
         [String]$DSCModulePath,
@@ -209,10 +209,11 @@
     # ----- Remove the drive if it exists
     Write-Verbose "Mapping RemoteDrive to \\$IPAddress\c$"
 
-
+    Write-Verbose "Remove RemoteDrive if exists"
     if ( Get-PSDrive -Name RemoteDrive -ErrorAction SilentlyContinue ) { Remove-PSDrive -Name RemoteDrive }
 
     Try {
+        Write-Verbose "Map"
         New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$IPAddress\c$" -Credential $LocalAdmin -ErrorAction stop | Write-Verbose
     }
     Catch {
@@ -220,7 +221,10 @@
         $ExceptionType = $_.Exception.GetType().Fullname
         Throw "Config-LabVM : Map Drive failed.`n`n     $ExceptionMessage`n`n $ExceptionType"
     }
- 
+    
+    Write-Verbose "PSDrive = $(Get-PSDrive | out-string)"
+
+    
     # ----- Copy LCM Config and run on remote system
     Write-Verbose "Configuring LCM on VM"
     Copy-Item -Path $MOFPath\LCMConfig.meta.mof -Destination RemoteDrive:\temp\localhost.meta.mof

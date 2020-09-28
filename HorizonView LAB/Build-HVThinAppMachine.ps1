@@ -54,6 +54,7 @@ $DSCConfig = "$PSScriptRoot\DSCConfigs\Config_HVTHimAppMachine.ps1"
 Config-LabVM -ConfigData $ConfigData `
     -DSCModulePath $DSCModulePath `
     -DSCResource 'NetworkingDSC','ComputerManagementDSC' `
+    -MofPath $PSScriptRoot\MOF `
     -LocalAdmin $LocalAdmin `
     -Timeout $Timeout `
     -Verbose

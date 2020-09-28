@@ -30,6 +30,7 @@
          RemoteDesktopAdmin EnableRDP {
             IsSingleInstance   = 'yes'
             Ensure             = 'Present'
+            UserAuthentication = 'NonSecure'
          }
 
   ##      Computer SetName { 
