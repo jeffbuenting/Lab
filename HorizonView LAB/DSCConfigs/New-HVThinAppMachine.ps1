@@ -43,6 +43,17 @@
             ExecutionPolicy      = 'Unrestricted'
         }
 
+        Script SleepSettings {
+            GetScript = { & powercfg.exe /? }
+            SetScript = {
+                Powercfg /Change monitor-timeout-ac 60
+                Powercfg /Change monitor-timeout-dc 0
+                Powercfg /Change standby-timeout-ac 0
+                Powercfg /Change standby-timeout-dc 0
+            }
+            TestScript = { $False }
+        }
+
         File Scripts {
             Ensure = 'Present'
             Type = 'Directory'
