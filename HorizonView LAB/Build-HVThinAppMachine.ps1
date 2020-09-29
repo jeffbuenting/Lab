@@ -60,26 +60,4 @@ Config-LabVM -ConfigData $ConfigData `
     -Verbose
 
 
-#Try {
-## ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-#
-#    New-LABVM -VMName $ConfigData.AllNodes.NodeName `
-#        -ESXHost $ConfigData.AllNodes.ESXHost `
-#        -Template $ConfigData.AllNodes.VMTemplate `
-#        -DataStore $ConfigData.AllNodes.Datastore `
-#        -ResourcePool $ConfigData.AllNodes.ResourcePool `
-#        -OSCustomization $ConfigData.AllNodes.OSCustomization `
-#        -VMSwitch $ConfigData.AllNodes.Switch `
-#        -PortGroup $ConfigData.AllNodes.Portgroup `
-#        -LocalAdmin $LocalAdmin `
-#        -CPU 4 `
-#        -Memory 4 `
-#        -Timeout $Timeout `
-#        -ErrorAction Stop `
-#        -Verbose
-#}
-#Catch {
-#    $ExceptionMessage = $_.Exception.Message
-#    $ExceptionType = $_.Exception.GetType().Fullname
-#    Throw "Problem creating the VM.`n`n     $ExceptionMessage`n`n $ExceptionType"
-#}
+
