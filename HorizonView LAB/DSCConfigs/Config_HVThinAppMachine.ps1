@@ -7,6 +7,9 @@
             OSCustomization = 'WIN 10 Workgroup'
             CPU = 4
             MemoryGB = 4
+            IPAddress = '192.168.1.59'
+    #        DefaultGateway = '192.168.1.1'
+            DNSServer = '192.168.1.1'
             DomainName = 'kings-wood.local'
             Datastore = 'NFS-Drobo'
        #     ResourcePool = 'Resources' 
