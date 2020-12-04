@@ -22,11 +22,11 @@
 
          [Parameter (ParameterSetName = 'Template')]
          [Parameter (ParameterSetName = 'ISO')]
-         [String]$ResourcePool,
+         [String]$ResourcePool = $Null,
 
          [Parameter (ParameterSetName = 'Template')]
          [Parameter (ParameterSetName = 'ISO')]
-         [String]$Location,
+         [String]$Location = $Null,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
          [String]$OSCustomization,
@@ -140,17 +140,44 @@
                     
 
                         Write-Verbose "Building with Template"
+                        Write-Verbose "Template = $Template"
 
                         # ----- Resource and Location are not required.  Need to account for this if someones environment does not use them.
-                        if ( $ResourcePool -and -not $Location ) { $Location = $ResourcePool }
+                        if ( $ResourcePool -and $Location ) {
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND"
+                            Write-Verbose "Location = $Location"
 
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Elseif ( $ResourcePool -and -not $Location ) {
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND NOT"
+                            Write-Verbose "Location = $Location"
+                            
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Elseif ( -Not $ResourcePool -and $Location ) {
+                            Write-Verbose "NOT"
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND"
+                            Write-Verbose "Location = $Location"
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Else {
+                            Write-Verbose "NOT"
+                            Write-Verbose "ResourcePool = $Resource"
+                            Write-Verbose "AND NOT"
+                            Write-Verbose "Location = $Location"
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
 
+                        # ----- Wait for task to finish.  It is finished when the task is no longer 'Running'
                         Write-Verbose "waiting for new-vm to complete"
   
                         Write-Verbose "Task State = $($Task.State )"
-                        while ( $Task.state -ne 'Success' ) {
+                        while ( $Task.state -eq 'Running' ) {
                             Start-Sleep -Seconds 15
   
                             Write-Verbose "Still waiting for new-vm to complete"
