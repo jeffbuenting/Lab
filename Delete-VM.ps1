@@ -16,7 +16,7 @@ Catch {
     Throw "Error Connecting to vCenter.`n`n     $ExceptionMessage`n`n $ExceptionType"
 }
 
-$VM =get-vm WIN10MA
+$VM =get-vm KW-WCont01
 
 if ( $VM.PowerState -eq 'PoweredOn' ) {
     stop-vm -VM $VM -Confirm:$False 
