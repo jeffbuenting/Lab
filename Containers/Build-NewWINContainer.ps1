@@ -170,7 +170,7 @@ Try {
 
     # ----- We are not using a DSC Pull server so we need to make sure the DSC resources are on the remote computer
     Write-Output "Copy DSC Resources"
-    Copy-ItemIfNotThere -path $DSCModulePath\xComputerManagement -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
+    Copy-ItemIfNotThere -path $DSCModulePath\ComputerManagementDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
     Copy-ItemIfNotThere -path $DSCModulePath\NetworkingDSC -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop 
     Copy-ItemIfNotThere -path $DSCModulePath\xWindowsUpdate -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop
     Copy-ItemIfNotThere -path $DSCModulePath\xTimeZone -Destination "RemoteDrive:\Program Files\WindowsPowerShell\Modules" -Recurse -ErrorAction Stop

@@ -7,7 +7,7 @@ configuration New-WINContainerSVR
     )             
     
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
-    Import-DscResource -ModuleName xComputerManagement
+    Import-DscResource -ModuleName ComputerManagementDSC
     Import-DSCResource -moduleName NetworkingDSC
     Import-DSCResource -ModuleName xWindowsUpdate
     Import-DscResource -ModuleName xSystemSecurity
@@ -56,7 +56,7 @@ configuration New-WINContainerSVR
             IsEnabled = $False
         }
 
-        xComputer SetName { 
+        Computer SetName { 
             Name = $Node.NodeName 
             DomainName = $Node.DomainName
             Credential = $DomainAdmin
@@ -71,13 +71,33 @@ configuration New-WINContainerSVR
   #          DependsOn = '[xComputer]SetName'
   #      }
 
+        RemoteDesktopAdmin RDP {
+            IsSingleInstance   = 'yes'
+            Ensure             = 'Present'
+            UserAuthentication = 'NonSecure'
+        }
+
+        Firewall 'Remote Desktop - User Mode (TCP-In)'
+        {
+            Name                  = 'Remote Desktop - User Mode (TCP-In)'
+            Ensure                = 'Present'
+            Enabled               = 'True'
+        }
+
+        Firewall 'Remote Desktop - User Mode (UDP-In)'
+        {
+            Name                  = 'Remote Desktop - User Mode (UDP-In)'
+            Ensure                = 'Present'
+            Enabled               = 'True'
+        }
+
         # ----- https://blog.sixeyed.com/getting-started-with-docker-on-windows-server-2019/
 
         WindowsFeature Containers
         {
              Name = 'Containers'
              Ensure = 'Present'
-             DependsOn = "[xComputer]SetName"
+             DependsOn = "[Computer]SetName"
         }
 
         Script DockerMsftProvider {
