@@ -26,7 +26,7 @@ $ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-1574
 
 # ----- Gather Credentials
     #$LocalAdmin = (Get-Credential -Message "Servers Local Admin Account")
-    $LOcalAdmin = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+    $LOcalAdmin = New-Object System.Management.Automation.PSCredential ('Administrator', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
     #$VCenterAdmin = (Get-Credential -UserName "administrator@vsphere.local" -Message "vCenter Account" )
     $VCenterAdmin = New-Object System.Management.Automation.PSCredential ('administrator@vsphere.local', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
     #$DomainAdmin = Get-Credential -UserName "Kings-wood\administrator" -Message "Domain Admin"
@@ -140,6 +140,6 @@ $ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-1574
 
 # ----- Windows Container server
     # ----- not joined to domain so the local admin is slightly different
-    $LOcalAdmin = New-Object System.Management.Automation.PSCredential ('administrator', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+    $LcalAdmin = New-Object System.Management.Automation.PSCredential ('administrator', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
     . $PSScriptRoot\Containers\Build-NewWINContainer.ps1 -DomainAdmin $DomainAdmin -LocalAdmin $LocalAdmin -DSCModulePath $DSCModulePath -Timeout 3600 -Verbose

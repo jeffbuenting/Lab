@@ -15,12 +15,22 @@ configuration New-WINContainerSVR
 
     Node $AllNodes.Where{$_.Role -eq "WinContainer"}.Nodename             
     { 
+        # ----- VMs in my environment are loosing network when they reboot.  Turns out this is an issue with how MS, VMTools, and Cisco handle ARP retrys.  Two ways to fix this.
+        # -----     1. disable ARP retrys at each Cisco switch.
+        # -----     2. Disably in Windows registry.  https://communities.vmware.com/t5/VMware-vCenter-Discussions/no-network-connectivity-to-vm-after-restart/m-p/470597
+        Registry ArpRetryCount {
+            Ensure      = "Present"  
+            Key         = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"
+            ValueName   = "ArpRetryCount"
+            ValueData   = "0"
+        }
 
         NetIPInterface DisableDhcpE0
         {
             InterfaceAlias = 'Ethernet0'
             AddressFamily  = 'IPv4'
             Dhcp           = 'Disabled'
+            DependsOn      = '[Registry]ArpRetryCount'
         }
 
         IPAddress NewIPv4AddressE0
