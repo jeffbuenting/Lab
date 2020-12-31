@@ -20,11 +20,17 @@ $ConfigData = @{
             IPAddress = '192.168.1.60'          
         }  
         
- #       @{             
- #           Nodename = "KW-WCont02"             
- #           Role = "WinContainer"             
- #           IPAddress = '192.168.1.61'
- #       }                
+        @{             
+            Nodename = "KW-WCont02"             
+            Role = "WinContainer"             
+            IPAddress = '192.168.1.61'
+        } 
+        
+        @{             
+            Nodename = "KW-WCont03"             
+            Role = "WinContainer"             
+            IPAddress = '192.168.1.62'
+        }               
     )
    
     NonNode = @{

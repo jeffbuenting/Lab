@@ -139,9 +139,22 @@ foreach ( $Node in ( $ConfigData.AllNodes | where Nodename -ne '*' ) ) {
         #New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\10.10.10.10\c$" -Credential $LocalAdmin -ErrorAction Stop
     }
     Catch {
-        $ExceptionMessage = $_.Exception.Message
-        $ExceptionType = $_.Exception.GetType().Fullname
-        Throw "Build-NewLABDomain : mapping to root.`n`n     $ExceptionMessage`n`n $ExceptionType"
+        # ----- I am having problems in my environment where the IP is not obtained from VM Tools.  But you can ping.  SO the VM is connected.
+        Write-Warning "Build-NewWINContainer : Problem mapping drive to VM via VMTools.  Possibly can't find IP via tools"
+
+        Try {
+            Write-Verbose "Trying directly to IP from Config data"
+
+            if ( Test-Connection $Node.IPAddress -Count 1 -Quiet ) {
+                New-PSDrive -Name RemoteDrive -PSProvider FileSystem -Root "\\$($Node.IPAddress)\c$" -Credential $LocalAdmin -ErrorAction Stop
+            }
+        }
+        Catch {   
+            $ExceptionMessage = $_.Exception.Message
+            $ExceptionType = $_.Exception.GetType().Fullname
+            Write-Error "Build-NewWINContainer : mapping to root.`n`n     $ExceptionMessage`n`n $ExceptionType"
+            Break
+        }
     }
 
     # ----- Copy LCM Config and run on remote system

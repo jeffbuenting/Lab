@@ -115,9 +115,9 @@ configuration New-WINContainerSVR
             GetScript = { Get-Package -Name Docker }
             SetScript = { Install-Package -Name Docker -ProviderName DockerMsftProvider -Force  }
             TestScript = {
-                $True
-     #           $Package = Get-Package -Name Docker 
-     #           if ( $Package ) { $True } Else { $False }
+                #$True
+                $Package = Get-Package -Name Docker -ErrorAction SIlentlyContinue
+                if ( $Package ) { $True } Else { $False }
             }
             DependsOn = "[Script]DockerMsftProvider"
         }
@@ -128,6 +128,30 @@ configuration New-WINContainerSVR
             State = 'Running'
             DependsOn = "[Script]Docker"
         }
+
+        # ----- Env DSC resource doesn't seem to be work for all users.  so using a script resource
+        # https://codingbee.net/powershell/powershell-make-a-permanent-change-to-the-path-environment-variable
+        Script DockerPath {
+            GetScript = { (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path }
+            SetScript = { 
+                $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+                $newpath = “$oldpath;C:\Program Files\Docker”
+                Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
+            }
+            TestScript = {
+                $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+                if ( $OldPath -notcontains 'C:\Program Files\Docker' ) { $False } Else { $True }
+            }
+            DependsOn = '[Service]DockerService'
+        }
+
+  #      Environment DockerPath 
+  #      {
+  #          Name = 'Path'
+  #          Path = $True
+  #          Value = 'C:\Program Files\Docker'
+  #          DependsOn = '[Service]DockerService'
+  #      }
     }
  
 }
