@@ -4,7 +4,9 @@ $Path = 'C:\certs'
 $SwarmManager = "WDockMngr01"
 $DockerHost = @(@{Name = "KW-WCont01";IP = "192.168.1.60"})
 
-if ( -Not ( Get-ChildItem cert:\currentuser\my | where subject -eq 'CN=Docker TLS Root' ) ) {
+$rootCert = Get-ChildItem cert:\currentuser\my | where subject -eq 'CN=Docker TLS Root'
+
+if ( -Not ( $rootCert ) ) {
     Write-Output "Creating Root Cert"
 
     # ----- Create CA Cert
@@ -38,6 +40,7 @@ foreach ( $D in $DockerHost ) {
         # ----- Server Cert
         $splat = @{
             FriendlyName = "$($D.Name)"
+            Subject = "$($D.Name)"
             CertStoreLocation = "Cert:\CurrentUser\My";
             Signer = $rootCert ;
             KeyExportPolicy = "Exportable";
