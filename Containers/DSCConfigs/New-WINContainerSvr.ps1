@@ -152,6 +152,19 @@ configuration New-WINContainerSVR
   #          Value = 'C:\Program Files\Docker'
   #          DependsOn = '[Service]DockerService'
   #      }
+
+        # https://docs.docker.com/compose/install/
+        Script DockerCompose {
+            GetScript = { docker-compose -v }
+            TestScript = {
+                if ( (docker-compose -v ) ) { $True } Else { $False }
+            }
+            SetScript = {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                Invoke-WebRequest "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Windows-x86_64.exe" -UseBasicParsing -OutFile $Env:ProgramFiles\Docker\docker-compose.exe
+            }
+            DependsOn = '[Service]DockerService'
+        }
     }
  
 }
