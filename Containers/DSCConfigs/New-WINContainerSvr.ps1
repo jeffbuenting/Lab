@@ -64,14 +64,6 @@ configuration New-WINContainerSVR
             DependsOn = "[DNSServerAddress]DNSE0","[xTimeZone]EST"
         }
 
-  #      xWindowsUpdateAgent Updates {
-  #          IsSingleInstance = 'Yes'
-  #          Source = 'MicrosoftUpdate'
-  #          Category = 'Security'
-  #          UpdateNow = $True
-  #          DependsOn = '[xComputer]SetName'
-  #      }
-
         RemoteDesktopAdmin RDP {
             IsSingleInstance   = 'yes'
             Ensure             = 'Present'
@@ -145,26 +137,39 @@ configuration New-WINContainerSVR
             DependsOn = '[Service]DockerService'
         }
 
-  #      Environment DockerPath 
-  #      {
-  #          Name = 'Path'
-  #          Path = $True
-  #          Value = 'C:\Program Files\Docker'
-  #          DependsOn = '[Service]DockerService'
-  #      }
+        # ----- Create or Join swarm if configured
+        Script DockerSwarm {
 
-        # https://docs.docker.com/compose/install/
-        Script DockerCompose {
-            GetScript = { docker-compose -v }
-            TestScript = {
-                if ( (docker-compose -v ) ) { $True } Else { $False }
-            }
+
+
+
             SetScript = {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                Invoke-WebRequest "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Windows-x86_64.exe" -UseBasicParsing -OutFile $Env:ProgramFiles\Docker\docker-compose.exe
+                # ----- check if swarm has been created.  check share for existing information.  if not files exist then swam needs to be init.  otherwise use that info in the files to join swarm.
+                if ( -not (Test-Path -Path $($NonNode.Source)\Configs\$($Node.SwarmName)) ) {
+                    # ----- Swarm has not been initialized
+                    docker swarm init --advertise-addr $Node.IPAddress
+
+                    # ----- Create share and the join files
+                    New-Item -Path $($NonNode.Source)\Configs\$($Node.SwarmName) -ItemType Directory
+
+                    # ----- docker swarm join-token outputs more than the needed command.  line 2 is all we need
+                    ( docker swarm join-token manager )[2] | ConverTo-SecureString | out-file $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt
+                    ( docker swarm join-token worker )[2] | ConverTo-SecureString | out-file $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt
+                }
+                Else {
+                    # ----- Swarm initialized join swarm
+                    if ( $Node.SwarmRole -eq 'Manager' ) {
+                        $CMD = Get-Content -Path $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString
+                    }
+                    Else {
+                        $CMD = Get-Content -Path $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString 
+                    }
+    
+                    Invoke-Command -ScriptBlock $CMD
+                }
             }
-            DependsOn = '[Service]DockerService'
         }
+  
     }
  
 }

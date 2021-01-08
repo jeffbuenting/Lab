@@ -17,19 +17,25 @@ $ConfigData = @{
         @{             
             Nodename = "KW-WCont01"             
             Role = "WinContainer"             
-            IPAddress = '192.168.1.60'          
+            IPAddress = '192.168.1.60' 
+            SwarmName = 'KWSwarm01'
+            SwarmRole = 'Manager'        
         }  
         
         @{             
             Nodename = "KW-WCont02"             
             Role = "WinContainer"             
             IPAddress = '192.168.1.61'
+            SwarmName = 'KWSwarm01'
+            SwarmRole = 'Manager'
         } 
         
         @{             
             Nodename = "KW-WCont03"             
             Role = "WinContainer"             
             IPAddress = '192.168.1.62'
+            SwarmName = 'KWSwarm01'
+            SwarmRole = 'Manager'
         }               
     )
    
@@ -39,7 +45,7 @@ $ConfigData = @{
         PortGroup = '192.168.1.x'
         VMTemplate = "WIN2019STD_T" 
         ESXHost = '192.168.1.14'   
-        Source = '\\192.168.1.166\Source'
+        Source = '\\192.168.1.23\Source'
         DataStore = 'NFS-Drobo'
     }         
 }  
