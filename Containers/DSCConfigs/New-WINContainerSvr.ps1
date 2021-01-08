@@ -70,19 +70,41 @@ configuration New-WINContainerSVR
             UserAuthentication = 'NonSecure'
         }
 
-        Firewall 'Remote Desktop - User Mode (TCP-In)'
+        # ----- TODO: Eventually need to figure out what other firewall ports to enable.  For now disabling firewall
+        FirewallProfile DisableDomainFirewallProfile
         {
-            Name                  = 'Remote Desktop - User Mode (TCP-In)'
-            Ensure                = 'Present'
-            Enabled               = 'True'
+            Name = 'Domain'
+            Enabled = 'False'
         }
 
-        Firewall 'Remote Desktop - User Mode (UDP-In)'
+        FirewallProfile DisablePrivateFirewallProfile
         {
-            Name                  = 'Remote Desktop - User Mode (UDP-In)'
-            Ensure                = 'Present'
-            Enabled               = 'True'
+            Name = 'Private'
+            Enabled = 'False'
         }
+
+        FirewallProfile DisablePublicFirewallProfile
+        {
+            Name = 'Public'
+            Enabled = 'False'
+        }
+
+ #       Firewall 'Remote Desktop - User Mode (TCP-In)'
+ #       {
+ #           Name                  = 'Remote Desktop - User Mode (TCP-In)'
+ #           Ensure                = 'Present'
+ #           Enabled               = 'True'
+ #       }
+ #
+ #       Firewall 'Remote Desktop - User Mode (UDP-In)'
+ #       {
+ #           Name                  = 'Remote Desktop - User Mode (UDP-In)'
+ #           Ensure                = 'Present'
+ #           Enabled               = 'True'
+ #       }
+
+
+
 
         # ----- https://blog.sixeyed.com/getting-started-with-docker-on-windows-server-2019/
 
