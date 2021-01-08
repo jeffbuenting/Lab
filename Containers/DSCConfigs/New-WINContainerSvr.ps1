@@ -160,56 +160,72 @@ configuration New-WINContainerSVR
         }
 
         # ----- Create or Join swarm if configured
+        # ----- because the DSC MOF is converted to a string, it can't read the variables passed.  So we need to make the actual scriptblock a string (remember to escape and such)
+        # https://social.technet.microsoft.com/Forums/en-US/2eb97d67-f1fb-4857-8840-de9c4cb9cae0/dsc-configuration-data-for-script-resources?forum=winserverpowershell
         Script DockerSwarm {
             GetScript = { docker node ls }
 
-            TestScript = {
-                if (  $Node.SwarmName ) {
+            TestScript = @"
+                Write-Verbose "SwarmName = $($Node.SwarmName)"
+
+                 
+                if ( '$($Node.SwarmName)' ) {
                     Write-Verbose "server Should be part of a swarm ...."
  
-                    $SwarmNodes = docker node ls
-                    if ( $SwarmNodes | Select-String -Pattern $Node.NodeName -Quiet ) {
-                        Write-Verbose "... and it is."
-
-                        $True
-                    }
-                    Else {
+                    `$Info = docker info
+                    if ( `$Info | Select-String -Pattern "Swarm: inactive" -Quiet ) {
                         Write-Verbose "... and it is not."
 
-                        $False
+                        `$False
+                    }
+                    Else {
+                        Write-Verbose "... and it is."
+
+                        `$True
                     }    
                 }
                 Else {
-                    Write-Verbose "Server will not be part of a swarm"
-                    $True
+                    Write-Verbose "Server will not be part of a swarm."
+                    `$True
                 }
-            }
+"@
 
-            SetScript = {
+            SetScript = @"
                 # ----- check if swarm has been created.  check share for existing information.  if not files exist then swam needs to be init.  otherwise use that info in the files to join swarm.
-                if ( -not (Test-Path -Path $($NonNode.Source)\Configs\$($Node.SwarmName)) ) {
+                Write-Verbose "Checking if the config path exists: $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)"
+                if ( -not (Test-Path -Path '$($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)') ) {
+                    Write-Verbose "It does not, so the swarm does not exist yet."
+
                     # ----- Swarm has not been initialized
+                    Write-Verbose "Swarm initialization."
                     docker swarm init --advertise-addr $Node.IPAddress
 
                     # ----- Create share and the join files
+                    Write-Verbose "Create Config files"
                     New-Item -Path $($NonNode.Source)\Configs\$($Node.SwarmName) -ItemType Directory
 
                     # ----- docker swarm join-token outputs more than the needed command.  line 2 is all we need
-                    ( docker swarm join-token manager )[2] | ConverTo-SecureString | out-file $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt
-                    ( docker swarm join-token worker )[2] | ConverTo-SecureString | out-file $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt
+                    ( docker swarm join-token manager )[2] | ConverTo-SecureString | out-file $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt
+                    ( docker swarm join-token worker )[2] | ConverTo-SecureString | out-file $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt
                 }
                 Else {
+                    Write-Verbose "It does, so the swarm exists.  Joining..."
+
                     # ----- Swarm initialized join swarm
-                    if ( $Node.SwarmRole -eq 'Manager' ) {
-                        $CMD = Get-Content -Path $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString
+                    if ( $($Node.SwarmRole) -eq 'Manager' ) {
+                        Write-Verbose "... as Manager."
+
+                        `$CMD = Get-Content -Path $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString
                     }
                     Else {
-                        $CMD = Get-Content -Path $($NonNode.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString 
+                        Write-Verbose "... as Worker"
+
+                        `$CMD = Get-Content -Path $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString 
                     }
     
-                    Invoke-Command -ScriptBlock $CMD
+                    Invoke-Command -ScriptBlock { `$CMD }
                 }
-            }
+"@
         }
   
     }
