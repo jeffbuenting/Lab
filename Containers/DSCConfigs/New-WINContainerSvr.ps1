@@ -139,9 +139,29 @@ configuration New-WINContainerSVR
 
         # ----- Create or Join swarm if configured
         Script DockerSwarm {
+            GetScript = { docker node ls }
 
+            TestScript = {
+                if (  $Node.SwarmName ) {
+                    Write-Verbose "server Should be part of a swarm ...."
+ 
+                    $SwarmNodes = docker node ls
+                    if ( $SwarmNodes | Select-String -Pattern $Node.NodeName -Quiet ) {
+                        Write-Verbose "... and it is."
 
+                        $True
+                    }
+                    Else {
+                        Write-Verbose "... and it is not."
 
+                        $False
+                    }    
+                }
+                Else {
+                    Write-Verbose "Server will not be part of a swarm"
+                    $True
+                }
+            }
 
             SetScript = {
                 # ----- check if swarm has been created.  check share for existing information.  if not files exist then swam needs to be init.  otherwise use that info in the files to join swarm.
