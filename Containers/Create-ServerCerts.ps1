@@ -2,7 +2,7 @@
 
 $Path = 'C:\certs'
 $SwarmManager = "WDockMngr01"
-$DockerHost = @(@{Name = "KW-WCont01";IP = "192.168.1.60"})
+$DockerHost = @(@{Name = "KW-WCont01";IP = "192.168.1.60"},@{Name = "KW-WCont02";IP = "192.168.1.61"},@{Name = "KW-WCont03";IP = "192.168.1.62"})
 
 $rootCert = Get-ChildItem cert:\currentuser\my | where subject -eq 'CN=Docker TLS Root'
 

@@ -15,28 +15,22 @@ $ConfigData = @{
         }
                  
         @{             
-            Nodename = "KW-WCont01"             
+            Nodename = "KW-WCont04"             
             Role = "WinContainer"             
-            IPAddress = '192.168.1.60' 
-            SwarmName = 'KWSwarm01'
+            IPAddress = '192.168.1.64' 
+            SwarmName = 'KWSwarm02'
             SwarmRole = 'Manager'        
         }  
         
-        @{             
-            Nodename = "KW-WCont02"             
-            Role = "WinContainer"             
-            IPAddress = '192.168.1.61'
-            SwarmName = 'KWSwarm01'
-            SwarmRole = 'Manager'
-        } 
+  #      @{             
+  #          Nodename = "KW-WCont05"             
+  #          Role = "WinContainer"             
+  #          IPAddress = '192.168.1.65'
+  #          SwarmName = 'KWSwarm02'
+  #          SwarmRole = 'Manager'
+  #      } 
         
-        @{             
-            Nodename = "KW-WCont03"             
-            Role = "WinContainer"             
-            IPAddress = '192.168.1.62'
-            SwarmName = 'KWSwarm01'
-            SwarmRole = 'Manager'
-        }               
+              
     )
    
     NonNode = @{

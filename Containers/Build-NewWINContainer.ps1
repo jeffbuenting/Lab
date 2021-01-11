@@ -34,7 +34,7 @@ Write-Verbose "----- Building Windows Container Server"
 Write-Verbose "Dot sourcing scripts"
 
 # ----- Load the Config Data
-. $PSScriptRoot\DSCConfigs\Config_WINContainerSvr.ps1
+. $PSScriptRoot\DSCConfigs\Config_WINContainerSvr2.ps1
 
 . $PSScriptRoot\DSCConfigs\New-WINContainerSvr.ps1
 
