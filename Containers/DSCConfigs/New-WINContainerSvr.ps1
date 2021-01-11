@@ -147,6 +147,14 @@ configuration New-WINContainerSVR
             DependsOn = "[Script]Docker"
         }
 
+#        File Config {
+#            Ensure = "Present"
+#            Type = 'Directory'
+#            DestinationPath = "\\192.168.1.23\source\Configs\$($Node.SwarmName)"
+#        #    Credential = $SourceAcct
+#            PsDscRunAsCredential = $SourceAcct
+#        }
+
         # ----- Env DSC resource doesn't seem to be work for all users.  so using a script resource
         # https://codingbee.net/powershell/powershell-make-a-permanent-change-to-the-path-environment-variable
         Script DockerPath {
@@ -208,50 +216,58 @@ configuration New-WINContainerSVR
                 }
 
                 # ----- check if swarm has been created.  check share for existing information.  if not files exist then swam needs to be init.  otherwise use that info in the files to join swarm.
-                Write-Verbose "Checking if the config path exists: ConfigDrive:\Configs\$($Node.SwarmName)"
+                Write-Verbose "Checking if the join text files exist..."
                 
-                if ( -not (Test-Path -Path 'ConfigDrive:\Configs\$($Node.SwarmName)') ) {
-                    Write-Verbose "It does not, so the swarm does not exist yet."
+                if ( (-not (Test-Path -Path 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt')) -and (-not (Test-Path -Path 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt')) ) {
+                    Write-Verbose "... They do not, so the swarm does not exist yet."
 
                     # ----- Swarm has not been initialized
                     Write-Verbose "Swarm initialization."
                     . "c:\program files\docker\docker.exe" swarm init --advertise-addr $($Node.IPAddress)
+
+                    # ----- Init takes a few and causes network connectivity to stop for a small bit.  Pausing to allow all of this to shake out.  
+                    Start-Sleep -seconds 15
        
-                    # ----- Create share and the join files
+                    # ----- Create the join files
                     Write-Verbose "Create Config files"
                     if ( -Not ( Test-Path  -Path ConfigDrive:\Configs\$($Node.SwarmName) ) ) { 
                         Write-Verbose "Config Path does not exits.  Creating it."
-
-                            New-Item -Path ConfigDrive:\Configs\$($Node.SwarmName) -ItemType Directory -ErrorAction SilentlyContinue
-
+             
+                        New-Item -Path ConfigDrive:\Configs\$($Node.SwarmName) -ItemType Directory 
+             
                     }
 
                     Write-Verbose "Saving join commands."
+
                     `$JoinCMD = . "c:\program files\docker\docker.exe" swarm join-token manager
-                    `$JoinCMD[2] | ConvertTo-SecureString -AsPlainText -Force | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt'
+                    Write-Verbose "To File = ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt"
+                    `$JoinCMD[2] | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt'
 
                     `$JoinCMD = . "c:\program files\docker\docker.exe" swarm join-token worker
-                    `$joinCMD[2] | ConvertTo-SecureString  -AsPlainText -Force | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt'
+                    Write-Verbose "To File = ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt"
+                    `$joinCMD[2] | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt'
                 
                 }
                 Else {
-                    Write-Verbose "It does, so the swarm exists.  Joining..."
+                    Write-Verbose "...They do, so the swarm exists.  Joining..."
 
                     # ----- Swarm initialized join swarm
-                    if ( $($Node.SwarmRole) -eq 'Manager' ) {
+                    if ( '$($Node.SwarmRole)' -eq 'Manager' ) {
                         Write-Verbose "... as Manager."
        
-                        `$CMD = "Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString"
+                        `$CMD = Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt 
                     }
                     Else {
                         Write-Verbose "... as Worker."
        
-                        `$CMD = "Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString"
+                        `$CMD = Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt 
                     }
+
+                    Write-Verbose "Running : `$CMD"
 
                     Invoke-Command -ScriptBlock { `$CMD }
 
-                    Remove-PSDrive ConfigDrive
+    #                Remove-PSDrive ConfigDrive
                 }               
 "@
             DependsOn = "[Script]DockerPath"

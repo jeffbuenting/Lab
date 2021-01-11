@@ -47,7 +47,7 @@ $ComposerSource = '\\192.168.1.166\source\VMWare\VMware-viewcomposer-7.12.0-1574
     $ViewAdmin = $DomainAdmin
     $ViewSQLAcct = New-Object System.Management.Automation.PSCredential ('ViewConnection', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
-    $ShareDriveCred = New-Object System.Management.Automation.PSCredential ('Jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
+    $ShareDriveCred = New-Object System.Management.Automation.PSCredential ('jeff', $(ConvertTo-SecureString 'Branman1!' -AsPlainText -Force))
 
 
 

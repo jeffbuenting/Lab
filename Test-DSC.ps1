@@ -1,4 +1,6 @@
-﻿# ----- Load the Config Data
+﻿
+
+# ----- Load the Config Data
 . c:\scripts\lab\containers\DSCConfigs\Config_WINContainerSvr2.ps1
 
 . c:\scripts\lab\containers\DSCConfigs\New-WINContainerSvr.ps1
