@@ -3,7 +3,11 @@ configuration New-WINContainerSVR
 {             
    param             
     (        
-        [PSCredential]$DomainAdmin            
+        [PSCredential]$DomainAdmin,
+        
+        [String]$IPAddress,
+        
+        [PSCredential]$SourceAcct         
     )             
     
     Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
@@ -16,35 +20,36 @@ configuration New-WINContainerSVR
     Node $AllNodes.Where{$_.Role -eq "WinContainer"}.Nodename             
     { 
 
+        if ( $IPAddress -ne $Node.IPAddress ) {
+            NetIPInterface DisableDhcpE0
+            {
+                InterfaceAlias = 'Ethernet0 3'
+                AddressFamily  = 'IPv4'
+                Dhcp           = 'Disabled'
+            }
 
-        NetIPInterface DisableDhcpE0
-        {
-            InterfaceAlias = 'Ethernet0 3'
-            AddressFamily  = 'IPv4'
-            Dhcp           = 'Disabled'
-        }
+            IPAddress NewIPv4AddressE0
+            {
+                IPAddress      = $Node.IPAddress
+                InterfaceAlias = 'Ethernet0 3'
+                AddressFamily  = 'IPV4'
+                DependsOn = "[NetIPInterface]DisableDhcpE0"
+            }
 
-        IPAddress NewIPv4AddressE0
-        {
-            IPAddress      = $Node.IPAddress
-            InterfaceAlias = 'Ethernet0 3'
-            AddressFamily  = 'IPV4'
-            DependsOn = "[NetIPInterface]DisableDhcpE0"
-        }
+            DefaultGatewayAddress SetDefaultGatewayE0
+            {
+                Address        = $Node.DefaultGateway
+                InterfaceAlias = 'Ethernet0 3'
+                AddressFamily  = 'IPv4'
+                DependsOn = "[IPAddress]NewIPv4AddressE0"
+            }
 
-        DefaultGatewayAddress SetDefaultGatewayE0
-        {
-            Address        = $Node.DefaultGateway
-            InterfaceAlias = 'Ethernet0 3'
-            AddressFamily  = 'IPv4'
-            DependsOn = "[IPAddress]NewIPv4AddressE0"
-        }
-
-         DNSServerAddress DNSE0 {
-            InterfaceAlias = 'Ethernet0 3'
-            AddressFamily = 'IPv4'
-            Address = $Node.DNSServer
-            DependsOn = "[DefaultGatewayAddress]SetDefaultGatewayE0"
+             DNSServerAddress DNSE0 {
+                InterfaceAlias = 'Ethernet0 3'
+                AddressFamily = 'IPv4'
+                Address = $Node.DNSServer
+                DependsOn = "[DefaultGatewayAddress]SetDefaultGatewayE0"
+            }
         }
 
         xTimeZone EST {
@@ -61,7 +66,7 @@ configuration New-WINContainerSVR
             Name = $Node.NodeName 
             DomainName = $Node.DomainName
             Credential = $DomainAdmin
-            DependsOn = "[DNSServerAddress]DNSE0","[xTimeZone]EST"
+            DependsOn = "[xTimeZone]EST"
         }
 
         RemoteDesktopAdmin RDP {
@@ -129,9 +134,8 @@ configuration New-WINContainerSVR
             GetScript = { Get-Package -Name Docker }
             SetScript = { Install-Package -Name Docker -ProviderName DockerMsftProvider -Force  }
             TestScript = {
-                #$True
-                $Package = Get-Package -Name Docker -ErrorAction SIlentlyContinue
-                if ( $Package ) { $True } Else { $False }
+                # ----- basically if the folder exists docker is installed
+                if ( test-path 'C:\Program Files\Docker\' ) { $True } Else { $False }
             }
             DependsOn = "[Script]DockerMsftProvider"
         }
@@ -160,20 +164,23 @@ configuration New-WINContainerSVR
         }
 
         # ----- Create or Join swarm if configured
+        # inspiration : https://github.com/pscripted/cDSCDockerSwarm
         # ----- because the DSC MOF is converted to a string, it can't read the variables passed.  So we need to make the actual scriptblock a string (remember to escape and such)
         # https://social.technet.microsoft.com/Forums/en-US/2eb97d67-f1fb-4857-8840-de9c4cb9cae0/dsc-configuration-data-for-script-resources?forum=winserverpowershell
         Script DockerSwarm {
-            GetScript = { docker node ls }
+            GetScript = @" 
+                & 'C:\Program Files\Docker\docker.exe' info  
+"@
 
             TestScript = @"
                 Write-Verbose "SwarmName = $($Node.SwarmName)"
 
-                 
+                
                 if ( '$($Node.SwarmName)' ) {
-                    Write-Verbose "server Should be part of a swarm ...."
- 
-                    `$Info = docker info
-                    if ( `$Info | Select-String -Pattern "Swarm: inactive" -Quiet ) {
+                    Write-Verbose "server Should be part of a swarm ...." 
+
+                    `$info = . "c:\program files\docker\docker.exe" info -f '{{ json . }}' | ConvertFrom-Json
+                    if ( `$info.swarm.localnodestate -eq 'inactive' ) {
                         Write-Verbose "... and it is not."
 
                         `$False
@@ -182,7 +189,7 @@ configuration New-WINContainerSVR
                         Write-Verbose "... and it is."
 
                         `$True
-                    }    
+                    }
                 }
                 Else {
                     Write-Verbose "Server will not be part of a swarm."
@@ -191,22 +198,41 @@ configuration New-WINContainerSVR
 "@
 
             SetScript = @"
+                # ----- Can't use PSCredential so need to recreate in 
+                `$ShareCred = New-Object System.Management.Automation.PSCredential ('$($SourceAcct.UserName)', `$(ConvertTo-SecureString '$($SourceAcct.GetNetworkCredential().Password)' -AsPlainText -Force))
+
+                # ----- Map source drive
+                Write-Verbose "Mapping to source config share."
+                if ( -NOT ( Get-PSDrive -Name ConfigDrive -ErrorAction SilentlyContinue )) {
+                    New-PSDrive -Name ConfigDrive -PSProvider FileSystem -Root "$($ConfigData.NonNode.Source)" -Credential `$ShareCred
+                }
+
                 # ----- check if swarm has been created.  check share for existing information.  if not files exist then swam needs to be init.  otherwise use that info in the files to join swarm.
-                Write-Verbose "Checking if the config path exists: $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)"
-                if ( -not (Test-Path -Path '$($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)') ) {
+                Write-Verbose "Checking if the config path exists: ConfigDrive:\Configs\$($Node.SwarmName)"
+                
+                if ( -not (Test-Path -Path 'ConfigDrive:\Configs\$($Node.SwarmName)') ) {
                     Write-Verbose "It does not, so the swarm does not exist yet."
 
                     # ----- Swarm has not been initialized
                     Write-Verbose "Swarm initialization."
-                    docker swarm init --advertise-addr $Node.IPAddress
-
+                    . "c:\program files\docker\docker.exe" swarm init --advertise-addr $($Node.IPAddress)
+       
                     # ----- Create share and the join files
                     Write-Verbose "Create Config files"
-                    New-Item -Path $($NonNode.Source)\Configs\$($Node.SwarmName) -ItemType Directory
+                    if ( -Not ( Test-Path  -Path ConfigDrive:\Configs\$($Node.SwarmName) ) ) { 
+                        Write-Verbose "Config Path does not exits.  Creating it."
 
-                    # ----- docker swarm join-token outputs more than the needed command.  line 2 is all we need
-                    ( docker swarm join-token manager )[2] | ConverTo-SecureString | out-file $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt
-                    ( docker swarm join-token worker )[2] | ConverTo-SecureString | out-file $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt
+                            New-Item -Path ConfigDrive:\Configs\$($Node.SwarmName) -ItemType Directory -ErrorAction SilentlyContinue
+
+                    }
+
+                    Write-Verbose "Saving join commands."
+                    `$JoinCMD = . "c:\program files\docker\docker.exe" swarm join-token manager
+                    `$JoinCMD[2] | ConvertTo-SecureString -AsPlainText -Force | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt'
+
+                    `$JoinCMD = . "c:\program files\docker\docker.exe" swarm join-token worker
+                    `$joinCMD[2] | ConvertTo-SecureString  -AsPlainText -Force | out-file 'ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt'
+                
                 }
                 Else {
                     Write-Verbose "It does, so the swarm exists.  Joining..."
@@ -214,18 +240,21 @@ configuration New-WINContainerSVR
                     # ----- Swarm initialized join swarm
                     if ( $($Node.SwarmRole) -eq 'Manager' ) {
                         Write-Verbose "... as Manager."
-
-                        `$CMD = Get-Content -Path $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString
+       
+                        `$CMD = "Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmManagerJoin.txt | ConvertFrom-SecureString"
                     }
                     Else {
-                        Write-Verbose "... as Worker"
-
-                        `$CMD = Get-Content -Path $($ConfigData.NonNodeData.Source)\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString 
+                        Write-Verbose "... as Worker."
+       
+                        `$CMD = "Get-Content -Path ConfigDrive:\Configs\$($Node.SwarmName)\SwarmWorkerJoin.txt | ConvertFrom-SecureString"
                     }
-    
+
                     Invoke-Command -ScriptBlock { `$CMD }
-                }
+
+                    Remove-PSDrive ConfigDrive
+                }               
 "@
+            DependsOn = "[Script]DockerPath"
         }
   
     }

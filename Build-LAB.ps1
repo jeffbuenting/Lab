@@ -17,8 +17,8 @@ $DomainNetBiosName = 'kings-wood'
 $PoolContainer = 'OU=SurfPPool,OU=VDI'
 
 #$DSCModulePath = 'C:\Users\jeff\Documents\WindowsPowerShell\Modules'
-#$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
-$DSCModulePath = '\\192.168.1.23\source\Modules'
+$DSCModulePath = 'C:\users\600990\Documents\WIndowsPowerShell\Modules'
+#$DSCModulePath = '\\192.168.1.23\source\Modules'
 
 $SQLServer = 'KW-SQL1'
 $ADServer = 'kw-dc1'
