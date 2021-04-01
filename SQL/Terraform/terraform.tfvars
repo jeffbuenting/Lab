@@ -1,13 +1,16 @@
-vcenter_user = "administrator@vcenter.local"
-vcenter_password = "Branman1!"
-vcenter_server = "192.168.1.16"
-vcenter_datacenter = "kw-hq"
-vcenter_datastore = "local-14-R10"
-vcenter_cluster = "192.168.1.14"
-vcenter_resourcepool = $Null
-vcenter_network = "192.168.1.x"
-vcenter_vmtemplate = "WIN2019STD_T"
+vsphere_server = "192.168.1.16"
+datacenter = "KW-HQ"
 
-VMName = "FMT-SQL-01"
-VMFolder = "FMT"
-
+BuildVM = {
+	Name = "FMT-SQL-01"
+	Datastore = "Local-14-R10"
+	# ----- cluster = null if no cluster exists.  otherwise this should be the name of the cluster where the VM will be created
+	Cluster = null
+	# ----- Host is the name of the ESXi Host to deploy the VM.  Should be null if Cluster is used.
+	Host = "192.168.1.14"
+	# ----- ResoucePool is null if the default (root) resource pool is to be used.
+	ResourcePool = null
+	Folder = "LAB/FMT"
+	Network = "192.168.1.x"
+	Template = "WIN2019STD_T"
+}
