@@ -2,7 +2,7 @@ vsphere_server = "192.168.1.16"
 datacenter = "KW-HQ"
 
 BuildVM = {
-	Name = "FMT-SQL-01"
+	Name = "FMT-SQL-03"
 	Datastore = "Local-14-R10"
 	# ----- cluster = null if no cluster exists.  otherwise this should be the name of the cluster where the VM will be created
 	Cluster = null
@@ -12,5 +12,5 @@ BuildVM = {
 	ResourcePool = null
 	Folder = "LAB/FMT"
 	Network = "192.168.1.x"
-	Template = "WIN2019STD_T"
+	Template = "WIN2016STDGUI_T"
 }

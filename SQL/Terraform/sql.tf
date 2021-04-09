@@ -51,6 +51,8 @@ resource "vsphere_virtual_machine" "vm" {
   firmware = data.vsphere_virtual_machine.template.firmware
 
   guest_id = data.vsphere_virtual_machine.template.guest_id
+  
+  scsi_type = "${data.vsphere_virtual_machine.template.scsi_type}"
 
   network_interface {
     network_id = data.vsphere_network.network.id
@@ -67,6 +69,7 @@ resource "vsphere_virtual_machine" "vm" {
 	customize {
 		windows_options {
 		  computer_name = var.BuildVM.Name
+		  time_zone = 035
 		}
 		network_interface {}
 	}
