@@ -10,5 +10,9 @@ variable BuildVM {
 		ResourcePool = string
 		Folder = string
 		Template = string
+		IP = string
+		Subnet = number
+		DefaultGateway = string
+		DNS = list(string)
 	})
 }

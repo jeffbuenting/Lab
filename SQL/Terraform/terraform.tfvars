@@ -12,5 +12,9 @@ BuildVM = {
 	ResourcePool = null
 	Folder = "LAB/FMT"
 	Network = "192.168.1.x"
-	Template = "WIN2016STDGUI_T"
+	Template = "WIN2016STDGUI_Ansible_T"
+	IP = "192.168.1.81"
+	Subnet = 24
+	DefaultGateway = "192.168.1.1"
+	DNS = ["192.168.1.1"]
 }

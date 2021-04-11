@@ -49,10 +49,14 @@ resource "vsphere_virtual_machine" "vm" {
   resource_pool_id = data.vsphere_resource_pool.resourcepool.id
   datastore_id     = data.vsphere_datastore.datastore.id
   firmware = data.vsphere_virtual_machine.template.firmware
+  efi_secure_boot_enabled = true
+  nested_hv_enabled = true
+
+  wait_for_guest_net_timeout = 15
 
   guest_id = data.vsphere_virtual_machine.template.guest_id
   
-  scsi_type = "${data.vsphere_virtual_machine.template.scsi_type}"
+  scsi_type = data.vsphere_virtual_machine.template.scsi_type
 
   network_interface {
     network_id = data.vsphere_network.network.id
@@ -71,7 +75,16 @@ resource "vsphere_virtual_machine" "vm" {
 		  computer_name = var.BuildVM.Name
 		  time_zone = 035
 		}
-		network_interface {}
+		
+		network_interface {
+		  ipv4_address = var.BuildVM.IP
+          ipv4_netmask = var.BuildVM.Subnet
+#		  dns_server_list = var.BuildVM.DNS
+		}
+		
+#		ipv4_gateway = var.BuildVM.DefaultGateway
 	}
   }
+  
+  
 }
