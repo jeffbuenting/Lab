@@ -1,4 +1,4 @@
-﻿# ----- First Domain Controller Data         
+﻿  
 $ConfigData = @{             
     AllNodes = @(             
         @{             

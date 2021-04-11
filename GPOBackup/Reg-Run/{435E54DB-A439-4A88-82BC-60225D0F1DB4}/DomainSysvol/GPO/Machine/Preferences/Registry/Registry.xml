@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RegistrySettings clsid="{A3CCFC41-DFDB-43a5-8D26-0FE8B954DA51}"><Registry clsid="{9CD4B2F4-923D-47f5-A062-E897DD1DAD50}" name="New-VDIMappedDrive" status="New-VDIMappedDrive" image="7" changed="2020-09-07 21:47:50" uid="{1010A4BB-38CC-488C-9F32-D3027DD56389}"><Properties action="U" displayDecimal="0" default="0" hive="HKEY_LOCAL_MACHINE" key="Software\Microsoft\Windows\CurrentVersion\Run" name="New-VDIMappedDrive" type="REG_SZ" value="Powershell.exe -command c:\scripts\New-VDIMappedDrive.ps1 -UserName jeff -Password Branman1! -Path '\\192.168.1.23\stuff' -noexit"/></Registry>
+</RegistrySettings>

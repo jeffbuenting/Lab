@@ -13,15 +13,22 @@
          [Parameter (ParameterSetName = 'Template')]
          [String]$Template,
 
-         [Parameter (ParameterSetName = 'ISO')]
-         [String]$ISO,
+ #        [Parameter (ParameterSetName = 'ISO')]
+ #        [String]$ISO,
 
-         [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
-         [String]$ResourcePool,
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
+         [String]$DataStore,
+
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
+         [String]$ResourcePool = $Null,
+
+         [Parameter (ParameterSetName = 'Template')]
+         [Parameter (ParameterSetName = 'ISO')]
+         [String]$Location = $Null,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
          [String]$OSCustomization,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
@@ -41,7 +48,6 @@
          [String]$Memory = 2,
   
          [Parameter (Mandatory = $True,ParameterSetName = 'Template')]
-         [Parameter (Mandatory = $True,ParameterSetName = 'ISO')]
          [PSCredential]$LocalAdmin,
   
          [Parameter (ParameterSetName = 'Template')]
@@ -127,42 +133,63 @@
 
         Try {
             # ----- Create the VM.  In this case we are building from a VM Template.  But this could be modified to be from an ISO.
-            if ( -Not ( Get-VM -Name $ConfigData.AllNodes.NodeName -ErrorAction SilentlyContinue ) ) {
+            if ( -Not ( Get-VM -Name $VMName -ErrorAction SilentlyContinue ) ) {
             
                 Write-Verbose "Creating VM"
-                Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
-
-                Switch ( $PSCmdlet.ParameterSetName ) {
-                    'ISO' {
-                        Write-Verbose "Building with ISO"
-
- 
-                    }
+        #        Write-Verbose "ParameterSetName = $($PSCmdlet.ParameterSetName)"
                     
-                    'Template' {
+
                         Write-Verbose "Building with Template"
+                        Write-Verbose "Template = $Template"
 
-                        $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -ResourcePool $ResourcePool -Location $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
-                    }
+                        # ----- Resource and Location are not required.  Need to account for this if someones environment does not use them.
+                        if ( $ResourcePool -and $Location ) {
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND"
+                            Write-Verbose "Location = $Location"
 
-                    'default' {
-                        Throw "New-LabVM : Oops problem picking parameter set Name"
-                    }
-                }
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Elseif ( $ResourcePool -and -not $Location ) {
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND NOT"
+                            Write-Verbose "Location = $Location"
+                            
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -ResourcePool $ResourcePool -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Elseif ( -Not $ResourcePool -and $Location ) {
+                            Write-Verbose "NOT"
+                            Write-Verbose "ResourcePool = $ResourcePool"
+                            Write-Verbose "AND"
+                            Write-Verbose "Location = $Location"
+
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -Location $Location -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+                        Else {
+                            Write-Verbose "NOT"
+                            Write-Verbose "ResourcePool = $Resource"
+                            Write-Verbose "AND NOT"
+                            Write-Verbose "Location = $Location"
+                            $task = New-VM -Name $VMName -Template $Template -vmhost $ESXHost -Datastore $DataStore -OSCustomizationSpec $OSCustomization -ErrorAction Stop -RunAsync
+                        }
+
+                        # ----- Wait for task to finish.  It is finished when the task is no longer 'Running'
+                        Write-Verbose "waiting for new-vm to complete"
+  
+                        Write-Verbose "Task State = $($Task.State )"
+                        while ( $Task.state -eq 'Running' ) {
+                            Start-Sleep -Seconds 15
+  
+                            Write-Verbose "Still waiting for new-vm to complete"
+  
+                            $Task = Get-Task -Id $Task.Id -Verbose:$False
+                            Write-Verbose "Task State = $($Task.State)"
+                        }
+
+                        write-verbose "VM done"
+
     
-                Write-Verbose "waiting for new-vm to complete"
-  
-                Write-Verbose "Task State = $($Task.State )"
-                while ( $Task.state -ne 'Success' ) {
-                    Start-Sleep -Seconds 60
-  
-                    Write-Verbose "Still waiting for new-vm to complete"
-  
-                    $Task = Get-Task -Id $Task.Id -Verbose:$False
-                    Write-Verbose "Task State = $($Task.State)"
-                }
-
-                write-verbose "VM done"
+                
             }
             Else {
                 Write-Verbose "VM already exists.  Continuing to configuration"
@@ -205,13 +232,15 @@
             }
      
             if ( $VM.PowerState -eq 'PoweredOff') {
-                Write-Verbose "Starting VM and wait for VM Tools to start."
-                $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
+
+                        Write-Verbose "Starting VM and wait for VM Tools to start."
+                        $VM = Start-VM -VM $VM -ErrorAction Stop | Wait-Tools
   
-                Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
-                wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
+                        Write-Verbose "Waiting for OS Custumizations to complete after the VM has powered on."
+                        wait-vmwareoscustomization -vm $VM -Timeout $Timeout -Verbose:$IsVerbose
   
-                Wait-Tools -VM $VM
+                        Wait-Tools -VM $VM
+
             }
             Else {
                 if ( $Reboot ) {
