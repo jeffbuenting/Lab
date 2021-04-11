@@ -1,4 +1,5 @@
 SourceDrive: 's'
 SourceShare: '\\192.168.1.23\source'
+SQLISOPath: 'Microsoft\en_sql_server_2019_enterprise_x64_dvd_5e1ecc6b.iso'
 SourceUsername: 'jeff'
 SourcePW: 'Branman1!'
