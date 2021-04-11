@@ -1,0 +1,17 @@
+---
+- name: Install SQL
+  hosts: 192.168.1.201
+  become: true
+
+  tasks:
+  - name: load vars
+    includ_vars:
+      file: '{{inventory_hostname}}.yaml'
+      name: SQLInstall
+
+  - name: map source network share
+    win_mapped_drive:
+      letter: SQLInstall.SourceDrive
+      path: SQLInstall.SourceShare
+      username: SQLInstall.SourceUsername
+      password: SQLInstall.SourcePW
