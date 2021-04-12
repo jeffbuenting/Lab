@@ -73,6 +73,7 @@ resource "vsphere_virtual_machine" "vm" {
 	customize {
 		windows_options {
 		  computer_name = var.BuildVM.Name
+		  admin_password = var.AdminPW
 		  time_zone = 035
 		}
 		

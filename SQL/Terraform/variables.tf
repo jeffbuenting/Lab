@@ -1,5 +1,6 @@
 variable vsphere_server {}
 variable datacenter {}
+variable AdminPW {}
 variable BuildVM {
 	type = object({
 		Name = string
