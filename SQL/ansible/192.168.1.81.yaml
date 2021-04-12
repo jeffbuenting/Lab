@@ -95,7 +95,6 @@ mssql_sa_password: "SAPW1!"
 # Client tools backwards compatibility = BC
 # Client tools SDK = SDK
 # Documentation components = BOL
-# Management tools – basic = SSMS
 # Management tools – advanced = ADV_SSMS
 # Distributed replay controller = DREPLAY_CTLR
 # Distributed replay client = DREPLAY_CLT
@@ -103,7 +102,7 @@ mssql_sa_password: "SAPW1!"
 # Master data services = MDS
 # ADVANCEDANALYTICS 	Installs R Services, requires the database engine. Unattended installations require /IACCEPTROPENLICENSETERMS parameter.   
 
-mssql_features: SQLENGINE,CONN,SSMS
+mssql_features: SQLENGINE,CONN
 
 # Collation
 mssql_collation: SQL_Latin1_General_CP1_CI_AS
