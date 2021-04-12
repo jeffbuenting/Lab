@@ -1,7 +1,6 @@
 ---
 - name: Install SQL
-  hosts: 192.168.1.201
-  become: true
+  hosts: 192.168.1.81
 
   tasks:
  # - name: terraform SQL server
@@ -11,7 +10,7 @@
  #     state: present
   
   - name: load vars
-    includ_vars:
+    include_vars:
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
 
