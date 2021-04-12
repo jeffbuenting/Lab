@@ -17,10 +17,10 @@
 
   - name: map source network share
     win_mapped_drive:
-      letter: SQLInstall.SourceDrive
-      path: SQLInstall.SourceShare
-      username: SQLInstall.SourceUsername
-      password: SQLInstall.SourcePW
+      letter: '{{SQLInstall.SourceDrive}}'
+      path: '{{SQLInstall.SourceShare}}'
+      username: '{{SQLInstall.SourceUsername}}'
+      password: '{{SQLInstall.SourcePW}}'
       
   - name: mount SQL ISO
     win_disk_image:
