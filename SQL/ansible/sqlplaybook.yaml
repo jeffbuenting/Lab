@@ -14,15 +14,48 @@
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
 
- # - name: map source network share
- #   win_mapped_drive:
- #     letter: '{{SQLInstall.SourceDrive}}'
- #     path: '{{SQLInstall.SourceShare}}'
- #     username: '{{SQLInstall.SourceUsername}}'
- #     password: '{{SQLInstall.SourcePW}}'
-      
-  - name: mount SQL ISO
-    win_disk_image:
-      image_path: '\\192.168.1.23\Source\Microsoft\en_sql_server_2019_enterprise_x64_dvd_5e1ecc6b.iso'
-      state: present
-    register: disk_image_out
+  - name: Install SQL Server
+  win_dsc:
+    resource_name: SQLSetup
+    Action: Install
+    UpdateEnabled: True
+    SourcePath: "d:\"
+    InstanceName: "{{ mssql_instance_name }}"
+    InstallSharedDir: "{{ mssql_installshared_path }}"
+    InstallSharedwowDir: "{{ mssql_installsharedwow_path }}"
+  #  InstanceDir: "{{ mssql_instance_path }}"
+    InstallSQLDataDir: "{{ mssql_sqlinstalldata_path }}"
+    SQLUserDBDir: "{{ mssql_sqluserdata_path }}"
+    SQLUserDBLogDir: "{{ mssql_sqluserlog_path }}"
+    SQLTempDBDir: "{{ mssql_sqltempDB_path }}"
+    SQLTempDBLogDir: "{{ mssql_sqltempDBlog_path }}"
+    Features: "{{ mssql_features }}"
+    SQLCollation: "{{ mssql_collation }}"
+    BrowserSvcStartupType: "{{ mssql_browsersvc_mode }}"
+    SuppressReboot: "{{ mssql_suppress_reboot }}"
+    # Service Accounts
+    #
+    # If the type of the DSC resource option is a PSCredential then 
+    # there needs to be 2 options set in the Ansible task definition 
+    # suffixed with _username and _password. So we will be providing 
+    # two options for these normally single option items.
+
+    # SQL Service Account
+#    SQLSvcAccount_username: "{{ mssql_sqlsvc_account }}"
+#    SQLSvcAccount_password: "{{ mssql_sqlsvc_account_pass }}"
+#    # SQL Agent Service Account
+#    AgtSvcAccount_username: "{{ mssql_agentsvc_account }}"
+#    AgtSvcAccount_password: "{{ mssql_agentsvc_account_pass }}"
+#    # SQL Analysis Services Account
+#    ASSvcAccount_username: "{{ mssql_assvc_account }}"
+#    ASSvcAccount_password: "{{ mssql_assvc_account_pass }}"
+
+    # Used when installing on a network path, comment out 
+    # SourceCredential_username: "{{ ansible_user }}"
+    # SourceCredential_password: "{{ ansible_password }}"
+
+    # System Admins 
+#    SQLSysAdminAccounts: "{{ mssql_sysadmin_accounts }}"
+    # Analysis Services Admins (if installed)
+ #   ASSysAdminAccounts: "{{ mssql_asadmin_accounts }}"
+  tags: install_sql

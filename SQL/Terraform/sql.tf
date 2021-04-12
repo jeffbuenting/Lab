@@ -80,10 +80,10 @@ resource "vsphere_virtual_machine" "vm" {
 		network_interface {
 		  ipv4_address = var.BuildVM.IP
           ipv4_netmask = var.BuildVM.Subnet
-#		  dns_server_list = var.BuildVM.DNS
+		  dns_server_list = var.BuildVM.DNS
 		}
 		
-#		ipv4_gateway = var.BuildVM.DefaultGateway
+		ipv4_gateway = var.BuildVM.DefaultGateway
 	}
   }
   
