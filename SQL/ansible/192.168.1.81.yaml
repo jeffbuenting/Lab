@@ -53,11 +53,11 @@ mssql_suppress_reboot: False
 ### File and Folder Paths ###
 
 # shared files paths
-mssql_installshared_path: E:\Program Files\Microsoft SQL Server
-mssql_installsharedwow_path: E:\Program Files (x86)\Microsoft SQL Server
+mssql_installshared_path: "E:\Program Files\Microsoft SQL Server"
+mssql_installsharedwow_path: "E:\Program Files (x86)\Microsoft SQL Server"
 
 # SQL DB and Logging Paths
-mssql_sqlinstalldata_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
+mssql_sqlinstalldata_path: "E:\\Program Files\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
 mssql_sqluserdata_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
 mssql_sqluserlog_path: "F:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
 mssql_sqltempDB_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
