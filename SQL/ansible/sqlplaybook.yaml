@@ -1,4 +1,8 @@
 ---
+# https://github.com/kkolk/mssql
+
+# to run: ansible-playbook -i ~/hosts sqlplaybook.yaml
+
 - name: Install SQL
   hosts: 192.168.1.81
 
@@ -13,6 +17,14 @@
     include_vars:
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
+
+# ----  Load required powershell modules
+  - name: Powershell | Check for SQLServer DSC Powershell module
+    win_psmodule:
+      name: SQLServerDsc
+      state: present
+
+# ---- install sql
 
   - name: Install SQL Server
   win_dsc:
