@@ -5,10 +5,10 @@
 # mssql_installation_source: https://go.microsoft.com/fwlink/?linkid=853016
 
 # Path to download installation media to
-# mssql_installation_path: C:\SQLInstall
+# mssql_installation_path: C:\\SQLInstall
 
 # Temporary path to store downloader
-# mssql_temp_download_path: C:\tmp
+# mssql_temp_download_path: C:\\tmp
 
 # instance details
 # MSSQLSERVER is the default instance
@@ -37,13 +37,13 @@ mssql_suppress_reboot: False
 ### Service Accounts ###
 
 # SQL Service Account
-# regex statements used in some steps expect the format of CONTOSO\
+# regex statements used in some steps expect the format of CONTOSO\\
 # do not use @CONTOSO.com for these accounts as SQL install will fail
-# mssql_sqlsvc_account: CONTOSO\sql_svc
+# mssql_sqlsvc_account: CONTOSO\\sql_svc
 # mssql_sqlsvc_account_pass: MyPlainTextPassWord01
 
 # SQL Agent Service Account
-# mssql_agentsvc_account: CONTOSO\sql_agt
+# mssql_agentsvc_account: CONTOSO\\sql_agt
 # mssql_agentsvc_account_pass: MyPlainTextPassWord01
 
 # SQL Analysis Services Account
@@ -53,15 +53,15 @@ mssql_suppress_reboot: False
 ### File and Folder Paths ###
 
 # shared files paths
-mssql_installshared_path: "E:\Program Files\Microsoft SQL Server"
-mssql_installsharedwow_path: "E:\Program Files (x86)\Microsoft SQL Server"
+mssql_installshared_path: "E:\\Program Files\\Microsoft SQL Server"
+mssql_installsharedwow_path: "E:\\Program Files (x86)\\Microsoft SQL Server"
 
 # SQL DB and Logging Paths
-mssql_sqlinstalldata_path: "E:\\Program Files\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
-mssql_sqluserdata_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
-mssql_sqluserlog_path: "F:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
-mssql_sqltempDB_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
-mssql_sqltempDBlog_path: "E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\Data"
+mssql_sqlinstalldata_path: "E:\\Program Files\\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
+mssql_sqluserdata_path: "E:\\Program Files\\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
+mssql_sqluserlog_path: "F:\\Program Files\\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
+mssql_sqltempDB_path: "E:\\Program Files\\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
+mssql_sqltempDBlog_path: "E:\\Program Files\\Microsoft SQL Server\\MSSQL13.MSSQLSERVER\\MSSQL\\Data"
 
 # security mode - SQL indicates mixed-mode auth, while Windows indicates Windows Auth.
 mssql_security_mode: sql
@@ -115,8 +115,8 @@ mssql_browsersvc_mode: Manual
 # Default Account Access
 # Ansible_Admin must be included so that the playbook can make configuration changes post install
 #mssql_sysadmin_accounts: 
-#  - CONTOSO\Domain Admins
-#  - CONTOSO\Administrator
+#  - CONTOSO\\Domain Admins
+#  - CONTOSO\\Administrator
 
 # Analysis Services Admins (if installed)
 #mssql_asadmin_accounts: "{{ mssql_sysadmin_accounts }}"
