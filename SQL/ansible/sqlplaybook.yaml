@@ -1,6 +1,6 @@
 ---
 - name: Install SQL
-  hosts: 192.168.1.201
+  hosts: 192.168.1.81
   become: true
 
   tasks:
