@@ -28,7 +28,7 @@
 
   - name: Install SQL Server
     win_dsc:
-    resource_name: SQLSetup
+      resource_name: SQLSetup
       Action: Install
       UpdateEnabled: True
       SourcePath: "d:\\"
