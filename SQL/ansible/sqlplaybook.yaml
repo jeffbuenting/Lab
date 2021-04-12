@@ -1,6 +1,7 @@
 ---
 - name: Install SQL
-  hosts: 192.168.1.81
+  hosts: 192.168.1.201
+  become: true
 
   tasks:
  # - name: terraform SQL server
@@ -10,7 +11,7 @@
  #     state: present
   
   - name: load vars
-    include_vars:
+    includ_vars:
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
 
@@ -23,6 +24,6 @@
       
   - name: mount SQL ISO
     win_disk_image:
-      image_path: '{{SQLInstall.SourceDrive}}:\{{SQLInstall.SQLISOPath}}'
+      image_path: 's:\Microsoft\en_sql_server_2019_enterprise_x64_dvd_5e1ecc6b.iso'
       state: present
 
