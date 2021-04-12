@@ -14,15 +14,15 @@
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
 
-  - name: map source network share
-    win_mapped_drive:
-      letter: '{{SQLInstall.SourceDrive}}'
-      path: '{{SQLInstall.SourceShare}}'
-      username: '{{SQLInstall.SourceUsername}}'
-      password: '{{SQLInstall.SourcePW}}'
+ # - name: map source network share
+ #   win_mapped_drive:
+ #     letter: '{{SQLInstall.SourceDrive}}'
+ #     path: '{{SQLInstall.SourceShare}}'
+ #     username: '{{SQLInstall.SourceUsername}}'
+ #     password: '{{SQLInstall.SourcePW}}'
       
   - name: mount SQL ISO
     win_disk_image:
-      image_path: 's:\Microsoft\en_sql_server_2019_enterprise_x64_dvd_5e1ecc6b.iso'
+      image_path: '\\192.168.1.23\Source\Microsoft\en_sql_server_2019_enterprise_x64_dvd_5e1ecc6b.iso'
       state: present
-
+    register: disk_image_out
