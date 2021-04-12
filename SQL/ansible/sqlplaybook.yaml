@@ -3,6 +3,12 @@
   hosts: 192.168.1.81
 
   tasks:
+  - name: terraform SQL server
+    terraform:
+      project_path: '~/scripts/lab/sql/terraform/'
+      lock: true
+      state: present
+  
   - name: load vars
     include_vars:
       file: '{{inventory_hostname}}.yaml'
@@ -10,10 +16,10 @@
 
   - name: map source network share
     win_mapped_drive:
-      letter: SQLInstall.SourceDrive
-      path: SQLInstall.SourceShare
-      username: SQLInstall.SourceUsername
-      password: SQLInstall.SourcePW
+      letter: '{{SQLInstall.SourceDrive}}'
+      path: '{{SQLInstall.SourceShare}}'
+      username: '{{SQLInstall.SourceUsername}}'
+      password: '{{SQLInstall.SourcePW}}'
       
   - name: mount SQL ISO
     win_disk_image:
