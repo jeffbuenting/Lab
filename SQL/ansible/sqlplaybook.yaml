@@ -11,7 +11,7 @@
  #     state: present
   
   - name: load vars
-    includ_vars:
+    include_vars:
       file: '{{inventory_hostname}}.yaml'
       name: SQLInstall
 
