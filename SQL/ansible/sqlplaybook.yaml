@@ -3,11 +3,11 @@
   hosts: 192.168.1.81
 
   tasks:
-  - name: terraform SQL server
-    terraform:
-      project_path: '~/scripts/lab/sql/terraform/'
-      lock: true
-      state: present
+ # - name: terraform SQL server
+ #   terraform:
+ #     project_path: '~/scripts/lab/sql/terraform/'
+ #     lock: true
+ #     state: present
   
   - name: load vars
     include_vars:
