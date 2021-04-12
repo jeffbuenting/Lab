@@ -4,6 +4,12 @@
   become: true
 
   tasks:
+  - name: terraform SQL server
+    terraform:
+      project_path: '~/scripts/lab/sql/terraform/'
+      lock: true
+      state: present
+  
   - name: load vars
     includ_vars:
       file: '{{inventory_hostname}}.yaml'
