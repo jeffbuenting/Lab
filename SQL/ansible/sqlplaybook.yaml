@@ -16,7 +16,6 @@
   - name: load vars
     include_vars:
       file: '{{inventory_hostname}}.yaml'
-      name: SQLInstall
 
 # ----  Load required powershell modules
   - name: Powershell | Check for SQLServer DSC Powershell module
