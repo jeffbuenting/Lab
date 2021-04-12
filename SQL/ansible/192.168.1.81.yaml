@@ -12,9 +12,9 @@
 
 # instance details
 # MSSQLSERVER is the default instance
-mssql_instance_name: MSSQLSERVER 
-mssql_drive: E
-mssql_datadrive_name: E
+mssql_instance_name: "MSSQLSERVER"
+mssql_drive: "E"
+mssql_datadrive_name: "E"
 mssql_port: 1433
 
 ### Memory Configuration ###
