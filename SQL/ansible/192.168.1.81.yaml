@@ -113,9 +113,8 @@ mssql_browsersvc_mode: Manual
 
 # Default Account Access
 # Ansible_Admin must be included so that the playbook can make configuration changes post install
-#mssql_sysadmin_accounts: 
-#  - CONTOSO\\Domain Admins
-#  - CONTOSO\\Administrator
+mssql_sysadmin_accounts: 
+  - Administrator
 
 # Analysis Services Admins (if installed)
 #mssql_asadmin_accounts: "{{ mssql_sysadmin_accounts }}"
