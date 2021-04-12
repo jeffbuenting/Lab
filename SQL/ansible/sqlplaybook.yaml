@@ -1,5 +1,5 @@
 ---
-# https://github.com/kkolk/mssql
+
 
 # to run: ansible-playbook -i ~/hosts sqlplaybook.yaml
 
@@ -24,6 +24,7 @@
       state: present
 
 # ---- install sql
+# https://github.com/kkolk/mssql
 
   - name: Install SQL Server
     win_dsc:
@@ -70,3 +71,9 @@
      # Analysis Services Admins (if installed)
  #    ASSysAdminAccounts: "{{ mssql_asadmin_accounts }}"
   tags: install_sql
+
+# ----- Install SMSS
+  - name: Install SMSS
+    win_chocolatey:
+      name: sql-server-management-studio
+      state: latest
