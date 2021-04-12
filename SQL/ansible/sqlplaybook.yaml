@@ -24,6 +24,6 @@
       
   - name: mount SQL ISO
     win_disk_image:
-      image_path: '{{SQLInstall.SourceDrive}}\{{SQLInstall.SQLISOPath}}'
+      image_path: '{{SQLInstall.SourceDrive}}:\{{SQLInstall.SQLISOPath}}'
       state: present
 
