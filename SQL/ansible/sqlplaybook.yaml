@@ -19,7 +19,7 @@
     resource_name: SQLSetup
     Action: Install
     UpdateEnabled: True
-    SourcePath: "d:\"
+    SourcePath: "d:\\"
     InstanceName: "{{ mssql_instance_name }}"
     InstallSharedDir: "{{ mssql_installshared_path }}"
     InstallSharedwowDir: "{{ mssql_installsharedwow_path }}"
